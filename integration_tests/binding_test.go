@@ -19,6 +19,7 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/mockbosh"
 	"github.com/pivotal-cf/on-demand-service-broker/mockcfapi"
+	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
 	"github.com/pivotal-cf/on-demand-service-broker/mockuaa"
 	"gopkg.in/yaml.v2"
 )
@@ -37,6 +38,52 @@ var (
 	brokerSession      *gexec.Session
 )
 
+type Bosh struct {
+	Director *mockhttp.Server
+	UAA      *mockuaa.ClientCredentialsServer
+}
+
+func NewBosh() *Bosh {
+	return &Bosh{
+		Director: mockbosh.New(),
+		UAA:      mockuaa.NewClientCredentialsServer(boshClientID, boshClientSecret, "bosh uaa token"),
+	}
+}
+
+func (b *Bosh) Configuration() config.Bosh {
+	return config.Bosh{
+		URL: b.Director.URL,
+		Authentication: config.BOSHAuthentication{
+			UAA: config.BOSHUAAAuthentication{UAAURL: b.UAA.URL, ID: boshClientID, Secret: boshClientSecret},
+		},
+	}
+}
+
+type CloudFoundry struct {
+	API *mockhttp.Server
+	UAA *mockuaa.ClientCredentialsServer
+}
+
+func NewCloudFoundry() *CloudFoundry {
+	return &CloudFoundry{
+		API: mockcfapi.New(),
+		UAA: mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token"),
+	}
+}
+
+func (cf *CloudFoundry) Configuration() config.CF {
+	return config.CF{
+		URL: cf.API.URL,
+		Authentication: config.UAAAuthentication{
+			URL: cf.UAA.URL,
+			ClientCredentials: config.ClientCredentials{
+				ID:     cfUaaClientID,
+				Secret: cfUaaClientSecret,
+			},
+		},
+	}
+}
+
 var _ = Describe("binding service instances", func() {
 	BeforeSuite(func() {
 		var err error
@@ -49,12 +96,10 @@ var _ = Describe("binding service instances", func() {
 	})
 
 	BeforeEach(func() {
-		boshDirector := mockbosh.New()
-		boshUAA := mockuaa.NewClientCredentialsServer(boshClientID, boshClientSecret, "bosh uaa token")
-		cfAPI := mockcfapi.New()
-		cfUAA := mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
+		bosh := NewBosh()
+		cloudFoundry := NewCloudFoundry()
 
-		brokerSession = startBroker(brokerPath, boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL, serviceAdapterPath)
+		brokerSession = startBroker(brokerPath, bosh, cloudFoundry, serviceAdapterPath)
 	})
 
 	AfterEach(func() {
@@ -77,8 +122,8 @@ var _ = Describe("binding service instances", func() {
 
 })
 
-func startBroker(brokerPath, boshURL, boshUaaURL, cfURL, cfUAAURL, serviceAdapterPath string) *gexec.Session {
-	configContents, err := yaml.Marshal(brokerConfig(boshURL, boshUaaURL, cfURL, cfUAAURL, serviceAdapterPath))
+func startBroker(brokerPath string, bosh *Bosh, cloudFoundry *CloudFoundry, serviceAdapterPath string) *gexec.Session {
+	configContents, err := yaml.Marshal(brokerConfig(bosh, cloudFoundry, serviceAdapterPath))
 	Expect(err).ToNot(HaveOccurred())
 
 	tempDirPath, err := ioutil.TempDir("", fmt.Sprintf("broker-integration-tests-%d", GinkgoParallelNode()))
@@ -97,7 +142,7 @@ func startBroker(brokerPath, boshURL, boshUaaURL, cfURL, cfUAAURL, serviceAdapte
 	return session
 }
 
-func brokerConfig(boshURL, boshUaaURL, cfURL, cfUAAURL, serviceAdapterPath string) config.Config {
+func brokerConfig(bosh *Bosh, cloudFoundry *CloudFoundry, serviceAdapterPath string) config.Config {
 	return config.Config{
 		Broker: config.Broker{
 			Port:          brokerPort,
@@ -105,22 +150,8 @@ func brokerConfig(boshURL, boshUaaURL, cfURL, cfUAAURL, serviceAdapterPath strin
 			Password:      "boshPassword",
 			StartUpBanner: false,
 		},
-		Bosh: config.Bosh{
-			URL: boshURL,
-			Authentication: config.BOSHAuthentication{
-				UAA: config.BOSHUAAAuthentication{UAAURL: boshUaaURL, ID: boshClientID, Secret: boshClientSecret},
-			},
-		},
-		CF: config.CF{
-			URL: cfURL,
-			Authentication: config.UAAAuthentication{
-				URL: cfUAAURL,
-				ClientCredentials: config.ClientCredentials{
-					ID:     cfUaaClientID,
-					Secret: cfUaaClientSecret,
-				},
-			},
-		},
+		Bosh: bosh.Configuration(),
+		CF:   cloudFoundry.Configuration(),
 		ServiceAdapter: config.ServiceAdapter{
 			Path: serviceAdapterPath,
 		},
