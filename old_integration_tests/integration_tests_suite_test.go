@@ -27,10 +27,10 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
-	"github.com/pivotal-cf/on-demand-service-broker/old_integration_tests/mock"
 	"github.com/pivotal-cf/on-demand-service-broker/mockbosh"
 	"github.com/pivotal-cf/on-demand-service-broker/mockcfapi"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
+	"github.com/pivotal-cf/on-demand-service-broker/old_integration_tests/mock"
 	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 	"gopkg.in/yaml.v2"
 )
