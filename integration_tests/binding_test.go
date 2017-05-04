@@ -23,7 +23,7 @@ var _ = Describe("binding service instances", func() {
 		brokerPath, err = gexec.Build("github.com/pivotal-cf/on-demand-service-broker/cmd/on-demand-service-broker")
 		Expect(err).NotTo(HaveOccurred())
 
-		serviceAdapterPath, err = gexec.Build("github.com/pivotal-cf/on-demand-service-broker/old_integration_tests/mock/adapter")
+		serviceAdapterPath, err = gexec.Build("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
 		Expect(err).NotTo(HaveOccurred())
 
 	})

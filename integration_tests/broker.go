@@ -50,6 +50,7 @@ func NewBroker(bosh *Bosh, cf *CloudFoundry, serviceAdapter *ServiceAdapter, pat
 
 func (b *Broker) Start() {
 	b.CF.RespondsToInitialChecks()
+	b.Bosh.RespondsToInitialChecks()
 
 	params := []string{"-configFilePath", b.writeConfigurationToFile()}
 	session, err := gexec.Start(exec.Command(b.Path, params...), GinkgoWriter, GinkgoWriter)

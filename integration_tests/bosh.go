@@ -39,6 +39,10 @@ func (b *Bosh) Configuration() config.Bosh {
 	}
 }
 
+func (b *Bosh) RespondsToInitialChecks() {
+	b.Director.VerifyAndMock(mockbosh.Info().RespondsWithSufficientVersionForLifecycleErrands())
+}
+
 func (b *Bosh) Verify() {
 	b.Director.VerifyMocks()
 }
