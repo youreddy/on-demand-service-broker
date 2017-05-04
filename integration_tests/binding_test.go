@@ -7,18 +7,27 @@
 package integration_tests
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os/exec"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-cf/on-demand-service-broker/config"
+	"gopkg.in/yaml.v2"
+)
+
+const (
+	brokerPort = 37890
 )
 
 var (
-	brokerPath    string
 	brokerSession *gexec.Session
 )
+
 var _ = Describe("binding service instances", func() {
 	BeforeSuite(func() {
 		brokerPath, err := gexec.Build("github.com/pivotal-cf/on-demand-service-broker/cmd/on-demand-service-broker")
@@ -28,7 +37,9 @@ var _ = Describe("binding service instances", func() {
 	})
 
 	AfterSuite(func() {
-		brokerSession.Kill()
+		if brokerSession != nil {
+			brokerSession.Kill()
+		}
 	})
 
 	It("binds a service to an application instance", func() {
@@ -46,10 +57,30 @@ var _ = Describe("binding service instances", func() {
 })
 
 func startBroker(brokerPath string) *gexec.Session {
-	cmd := exec.Command(brokerPath)
+	configContents, err := yaml.Marshal(brokerConfig)
+	Expect(err).ToNot(HaveOccurred())
+
+	tempDirPath, err := ioutil.TempDir("", fmt.Sprintf("broker-integration-tests-%d", GinkgoParallelNode()))
+	Expect(err).ToNot(HaveOccurred())
+
+	testConfigFilePath := filepath.Join(tempDirPath, "broker.yml")
+	Expect(ioutil.WriteFile(testConfigFilePath, configContents, 0644)).To(Succeed())
+
+	params := []string{"-configFilePath", testConfigFilePath}
+
+	cmd := exec.Command(brokerPath, params...)
 	session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(brokerSession).Should(gbytes.Say("listening on"))
+	Eventually(session).Should(gbytes.Say("listening on"))
 
 	return session
+}
+
+var brokerConfig = config.Config{
+	Broker: config.Broker{
+		Port:          brokerPort,
+		Username:      "boshUsername",
+		Password:      "boshPassword",
+		StartUpBanner: false,
+	},
 }
