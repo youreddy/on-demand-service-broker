@@ -19,13 +19,8 @@ var (
 
 var _ = Describe("binding service instances", func() {
 	BeforeSuite(func() {
-		var err error
-		brokerPath, err = gexec.Build("github.com/pivotal-cf/on-demand-service-broker/cmd/on-demand-service-broker")
-		Expect(err).NotTo(HaveOccurred())
-
-		serviceAdapterPath, err = gexec.Build("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
-		Expect(err).NotTo(HaveOccurred())
-
+		brokerPath = binaryFrom("github.com/pivotal-cf/on-demand-service-broker/cmd/on-demand-service-broker")
+		serviceAdapterPath = binaryFrom("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
 	})
 
 	It("binds a service to an application instance", func() {
@@ -39,6 +34,12 @@ var _ = Describe("binding service instances", func() {
 	})
 
 })
+
+func binaryFrom(srcPath string) string {
+	brokerPath, err := gexec.Build(srcPath)
+	Expect(err).NotTo(HaveOccurred())
+	return brokerPath
+}
 
 func withBroker(test func(*Broker)) {
 	broker := NewBroker(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath), brokerPath)
