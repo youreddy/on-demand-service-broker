@@ -7,15 +7,16 @@
 package integration_tests
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
@@ -23,7 +24,15 @@ import (
 )
 
 const (
-	brokerPort = 37890
+	brokerPort     = 37890
+	brokerUsername = "broker-username"
+	brokerPassword = "a-very-strong-password"
+	instanceID     = "some-binding-instance-ID"
+	bindingId      = "Gjklh45ljkhn"
+
+	bindingPlanID    = "plan-guid-from-cc"
+	bindingServiceID = "service-guid-from-cc"
+	appGUID          = "app-guid-from-cc"
 )
 
 type Broker struct {
@@ -52,7 +61,7 @@ func (b *Broker) Start() {
 	b.CF.RespondsToInitialChecks()
 	b.Bosh.RespondsToInitialChecks()
 
-	params := []string{"-configFilePath", b.writeConfigurationToFile()}
+	params := []string{"-configFilePath", b.configurationFile()}
 	session, err := gexec.Start(exec.Command(b.Path, params...), GinkgoWriter, GinkgoWriter)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(session).Should(gbytes.Say("listening on"))
@@ -60,7 +69,7 @@ func (b *Broker) Start() {
 	b.Session = session
 }
 
-func (b *Broker) writeConfigurationToFile() string {
+func (b *Broker) configurationFile() string {
 	testConfigFilePath := filepath.Join(b.tempDirPath, "broker.yml")
 
 	configContents, err := yaml.Marshal(b.configuration())
@@ -95,4 +104,27 @@ func (b *Broker) Close() {
 	b.CF.Close()
 	b.Bosh.Close()
 	Expect(os.RemoveAll(b.tempDirPath)).To(Succeed())
+}
+
+func (b *Broker) CreationRequest() *http.Request {
+	reqJson := fmt.Sprintf(`{
+		"plan_id" : "%s"",
+		"service_id":  "%s"",
+		"app_guid": "%s",
+		"bind_resource": { "app_guid": "%s"},
+		"parameters": {"baz": "bar"}
+	}`,
+		bindingPlanID, bindingServiceID, appGUID, appGUID,
+	)
+
+	bindingReq, err := http.NewRequest("PUT",
+		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s/service_bindings/%s", brokerPort, instanceID, bindingId),
+		bytes.NewReader([]byte(reqJson)))
+	Expect(err).ToNot(HaveOccurred())
+	return withBasicAuth(bindingReq)
+}
+
+func withBasicAuth(req *http.Request) *http.Request {
+	req.SetBasicAuth(brokerUsername, brokerPassword)
+	return req
 }

@@ -7,6 +7,8 @@
 package integration_tests
 
 import (
+	"net/http"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -25,7 +27,10 @@ var _ = Describe("binding service instances", func() {
 
 	It("binds a service to an application instance", func() {
 		withBroker(func(b *Broker) {
-			Expect(true).NotTo(BeTrue(), "in the test")
+			response, err := http.DefaultClient.Do(b.CreationRequest())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.StatusCode).To(Equal(http.StatusCreated))
+
 			// request a new binding from service to application application
 
 			// responds with Created and the binding details
