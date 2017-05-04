@@ -9,6 +9,7 @@ package integration_tests
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -30,12 +31,6 @@ const (
 	boshClientSecret  = "boshClientSecret"
 	cfUaaClientID     = "cfAdminUsername"
 	cfUaaClientSecret = "cfAdminPassword"
-)
-
-var (
-	brokerPath         string
-	serviceAdapterPath string
-	brokerSession      *gexec.Session
 )
 
 type Bosh struct {
@@ -84,6 +79,89 @@ func (cf *CloudFoundry) Configuration() config.CF {
 	}
 }
 
+type ServiceAdapter struct {
+	Path string
+}
+
+func NewServiceAdapter(path string) *ServiceAdapter {
+	return &ServiceAdapter{
+		Path: path,
+	}
+}
+
+func (sa *ServiceAdapter) Configuration() config.ServiceAdapter {
+	return config.ServiceAdapter{
+		Path: sa.Path,
+	}
+}
+
+type Broker struct {
+	Bosh           *Bosh
+	CF             *CloudFoundry
+	ServiceAdapter *ServiceAdapter
+	Path           string
+	tempDirPath    string
+	Session        *gexec.Session
+}
+
+func NewBroker(bosh *Bosh, cf *CloudFoundry, serviceAdapter *ServiceAdapter, path string) *Broker {
+	tempDirPath, err := ioutil.TempDir("", fmt.Sprintf("broker-integration-tests-%d", GinkgoParallelNode()))
+	Expect(err).ToNot(HaveOccurred())
+
+	return &Broker{
+		Bosh:           bosh,
+		CF:             cf,
+		ServiceAdapter: serviceAdapter,
+		Path:           path,
+		tempDirPath:    tempDirPath,
+	}
+}
+
+func (b *Broker) Start() {
+	params := []string{"-configFilePath", b.writeConfigurationToFile()}
+
+	session, err := gexec.Start(exec.Command(brokerPath, params...), GinkgoWriter, GinkgoWriter)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(session).Should(gbytes.Say("listening on"))
+
+	b.Session = session
+}
+
+func (b *Broker) writeConfigurationToFile() string {
+	testConfigFilePath := filepath.Join(b.tempDirPath, "broker.yml")
+
+	configContents, err := yaml.Marshal(b.configuration())
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ioutil.WriteFile(testConfigFilePath, configContents, 0644)).To(Succeed())
+	return testConfigFilePath
+}
+
+func (b *Broker) configuration() config.Config {
+	return config.Config{
+		Broker: config.Broker{
+			Port:          brokerPort,
+			Username:      "boshUsername",
+			Password:      "boshPassword",
+			StartUpBanner: false,
+		},
+		Bosh:           b.Bosh.Configuration(),
+		CF:             b.CF.Configuration(),
+		ServiceAdapter: b.ServiceAdapter.Configuration(),
+	}
+}
+
+func (b *Broker) Cleanup() {
+	if b.Session != nil {
+		b.Session.Kill()
+	}
+	Expect(os.RemoveAll(b.tempDirPath)).To(Succeed())
+}
+
+var (
+	brokerPath         string
+	serviceAdapterPath string
+)
+
 var _ = Describe("binding service instances", func() {
 	BeforeSuite(func() {
 		var err error
@@ -95,65 +173,25 @@ var _ = Describe("binding service instances", func() {
 
 	})
 
-	BeforeEach(func() {
-		bosh := NewBosh()
-		cloudFoundry := NewCloudFoundry()
-
-		brokerSession = startBroker(brokerPath, bosh, cloudFoundry, serviceAdapterPath)
-	})
-
-	AfterEach(func() {
-		if brokerSession != nil {
-			brokerSession.Kill()
-		}
-	})
-
 	It("binds a service to an application instance", func() {
-		// director, with authentication
-		// CF, with authentication
-		// service adapter
-		// create broker
+		withBroker(func(b *Broker) {
+			Expect(true).NotTo(BeTrue(), "in the test")
+			// request a new binding from service to application application
 
-		// request a new binding from service to application application
-
-		// responds with Created and the binding details
-		// logs the bind request with an ID
+			// responds with Created and the binding details
+			// logs the bind request with an ID
+		})
 	})
 
 })
 
-func startBroker(brokerPath string, bosh *Bosh, cloudFoundry *CloudFoundry, serviceAdapterPath string) *gexec.Session {
-	configContents, err := yaml.Marshal(brokerConfig(bosh, cloudFoundry, serviceAdapterPath))
-	Expect(err).ToNot(HaveOccurred())
+func withBroker(body func(*Broker)) {
+	bosh := NewBosh()
+	cloudFoundry := NewCloudFoundry()
+	serviceAdapter := NewServiceAdapter(serviceAdapterPath)
 
-	tempDirPath, err := ioutil.TempDir("", fmt.Sprintf("broker-integration-tests-%d", GinkgoParallelNode()))
-	Expect(err).ToNot(HaveOccurred())
-
-	testConfigFilePath := filepath.Join(tempDirPath, "broker.yml")
-	Expect(ioutil.WriteFile(testConfigFilePath, configContents, 0644)).To(Succeed())
-
-	params := []string{"-configFilePath", testConfigFilePath}
-
-	cmd := exec.Command(brokerPath, params...)
-	session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(session).Should(gbytes.Say("listening on"))
-
-	return session
-}
-
-func brokerConfig(bosh *Bosh, cloudFoundry *CloudFoundry, serviceAdapterPath string) config.Config {
-	return config.Config{
-		Broker: config.Broker{
-			Port:          brokerPort,
-			Username:      "boshUsername",
-			Password:      "boshPassword",
-			StartUpBanner: false,
-		},
-		Bosh: bosh.Configuration(),
-		CF:   cloudFoundry.Configuration(),
-		ServiceAdapter: config.ServiceAdapter{
-			Path: serviceAdapterPath,
-		},
-	}
+	theBroker := NewBroker(bosh, cloudFoundry, serviceAdapter, brokerPath)
+	defer theBroker.Cleanup()
+	theBroker.Start()
+	body(theBroker)
 }
