@@ -18,19 +18,23 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/mockbosh"
+	"github.com/pivotal-cf/on-demand-service-broker/mockcfapi"
 	"github.com/pivotal-cf/on-demand-service-broker/mockuaa"
 	"gopkg.in/yaml.v2"
 )
 
 const (
-	brokerPort       = 37890
-	boshClientID     = "bosh-client-id"
-	boshClientSecret = "boshClientSecret"
+	brokerPort        = 37890
+	boshClientID      = "bosh-client-id"
+	boshClientSecret  = "boshClientSecret"
+	cfUaaClientID     = "cfAdminUsername"
+	cfUaaClientSecret = "cfAdminPassword"
 )
 
 var (
-	brokerPath    string
-	brokerSession *gexec.Session
+	brokerPath         string
+	serviceAdapterPath string
+	brokerSession      *gexec.Session
 )
 
 var _ = Describe("binding service instances", func() {
@@ -38,12 +42,19 @@ var _ = Describe("binding service instances", func() {
 		var err error
 		brokerPath, err = gexec.Build("github.com/pivotal-cf/on-demand-service-broker/cmd/on-demand-service-broker")
 		Expect(err).NotTo(HaveOccurred())
+
+		serviceAdapterPath, err = gexec.Build("github.com/pivotal-cf/on-demand-service-broker/old_integration_tests/mock/adapter")
+		Expect(err).NotTo(HaveOccurred())
+
 	})
 
 	BeforeEach(func() {
 		boshDirector := mockbosh.New()
 		boshUAA := mockuaa.NewClientCredentialsServer(boshClientID, boshClientSecret, "bosh uaa token")
-		brokerSession = startBroker(brokerPath, boshDirector.URL, boshUAA.URL)
+		cfAPI := mockcfapi.New()
+		cfUAA := mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
+
+		brokerSession = startBroker(brokerPath, boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL, serviceAdapterPath)
 	})
 
 	AfterEach(func() {
@@ -66,8 +77,8 @@ var _ = Describe("binding service instances", func() {
 
 })
 
-func startBroker(brokerPath, boshURL, boshUaaURL string) *gexec.Session {
-	configContents, err := yaml.Marshal(brokerConfig(boshURL, boshUaaURL))
+func startBroker(brokerPath, boshURL, boshUaaURL, cfURL, cfUAAURL, serviceAdapterPath string) *gexec.Session {
+	configContents, err := yaml.Marshal(brokerConfig(boshURL, boshUaaURL, cfURL, cfUAAURL, serviceAdapterPath))
 	Expect(err).ToNot(HaveOccurred())
 
 	tempDirPath, err := ioutil.TempDir("", fmt.Sprintf("broker-integration-tests-%d", GinkgoParallelNode()))
@@ -86,7 +97,7 @@ func startBroker(brokerPath, boshURL, boshUaaURL string) *gexec.Session {
 	return session
 }
 
-func brokerConfig(boshURL, boshUaaURL string) config.Config {
+func brokerConfig(boshURL, boshUaaURL, cfURL, cfUAAURL, serviceAdapterPath string) config.Config {
 	return config.Config{
 		Broker: config.Broker{
 			Port:          brokerPort,
@@ -99,6 +110,19 @@ func brokerConfig(boshURL, boshUaaURL string) config.Config {
 			Authentication: config.BOSHAuthentication{
 				UAA: config.BOSHUAAAuthentication{UAAURL: boshUaaURL, ID: boshClientID, Secret: boshClientSecret},
 			},
+		},
+		CF: config.CF{
+			URL: cfURL,
+			Authentication: config.UAAAuthentication{
+				URL: cfUAAURL,
+				ClientCredentials: config.ClientCredentials{
+					ID:     cfUaaClientID,
+					Secret: cfUaaClientSecret,
+				},
+			},
+		},
+		ServiceAdapter: config.ServiceAdapter{
+			Path: serviceAdapterPath,
 		},
 	}
 }
