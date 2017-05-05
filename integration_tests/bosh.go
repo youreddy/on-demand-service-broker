@@ -21,6 +21,7 @@ const (
 	boshClientID       = "bosh-client-id"
 	boshClientSecret   = "boshClientSecret"
 	boshDeploymentName = "service-instance_some-service-instance-ID"
+	boshVMDescription  = `{"IPs" : ["ip.from.bosh"], "job_name": "some-instance-group"}`
 )
 
 var manifestForFirstDeployment = bosh.BoshManifest{
@@ -69,7 +70,7 @@ func (b *Bosh) ReturnsDeployment() {
 	b.Director.VerifyAndMock(
 		mockbosh.VMsForDeployment(boshDeploymentName).RedirectsToTask(taskID),
 		mockbosh.Task(taskID).RespondsWithTaskContainingState(boshclient.BoshTaskDone),
-		mockbosh.TaskOutput(taskID).RespondsWithVMsOutput([]boshclient.BoshVMsOutput{{IPs: []string{"ip.from.bosh"}, InstanceGroup: "some-instance-group"}}),
+		mockbosh.TaskOutput(taskID).RespondsWithBody(boshVMDescription),
 		mockbosh.GetDeployment(boshDeploymentName).RespondsWithManifest(manifestForFirstDeployment),
 	)
 }

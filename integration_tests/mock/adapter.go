@@ -7,6 +7,7 @@
 package mock
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -78,11 +79,14 @@ var InputFiles = []string{
 	InputInstanceIDForGenerateDashboardUrl,
 }
 
-func decodeTestResponse(env string, obj interface{}) {
-	f, err := os.Open(os.Getenv(env))
+func testResponseFor(env string) []byte {
+	body, err := ioutil.ReadFile(os.Getenv(env))
 	Expect(err).NotTo(HaveOccurred())
-	defer f.Close()
-	Expect(json.NewDecoder(f).Decode(obj)).To(Succeed())
+	return body
+}
+
+func decodeTestResponse(env string, obj interface{}) {
+	Expect(json.NewDecoder(bytes.NewReader(testResponseFor(env))).Decode(obj)).To(Succeed())
 }
 
 type Adapter struct{}
@@ -250,6 +254,22 @@ func (CreateBindingCommandHandler) FailsWithAppGuidNotProvidedErrorAndStderr(std
 	os.Setenv(ExitCodeForBind, AppGuidNotProvidedErrorExitCode)
 	os.Unsetenv(StdoutContentForBind)
 	os.Setenv(StderrContentForBind, stderrString)
+}
+
+type CreateBindingRequest struct {
+	BoshManifest      string
+	BoshVMs           string
+	RequestParameters string
+	BindingID         string
+}
+
+func (CreateBindingCommandHandler) Received() *CreateBindingRequest {
+	return &CreateBindingRequest{
+		BoshManifest:      string(testResponseFor(InputManifestForBind)),
+		BoshVMs:           string(testResponseFor(InputBoshVmsForBind)),
+		RequestParameters: string(testResponseFor(InputRequestParamsForBind)),
+		BindingID:         string(testResponseFor(InputIDForBind)),
+	}
 }
 
 func (CreateBindingCommandHandler) ReceivedManifest() bosh.BoshManifest {

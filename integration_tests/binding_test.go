@@ -12,8 +12,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 )
+
+// TODO SF We should be mocking out the underlying service, not the adapter
 
 var (
 	brokerPath         = NewBinary("github.com/pivotal-cf/on-demand-service-broker/cmd/on-demand-service-broker")
@@ -22,39 +23,29 @@ var (
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
-		withBroker(func(b *Broker) {
-			b.Bosh.ReturnsDeployment()
+		withBroker(
+			CreatesBinding(),
+			func(b *Broker) {
+				b.Bosh.ReturnsDeployment()
 
-			response, err := http.DefaultClient.Do(b.CreationRequest())
-			Expect(err).ToNot(HaveOccurred())
-			Expect(response.StatusCode).To(Equal(http.StatusCreated))
-			Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
+				response, err := http.DefaultClient.Do(b.CreationRequest())
+				Expect(err).ToNot(HaveOccurred())
+				Expect(response.StatusCode).To(Equal(http.StatusCreated))
+				Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
-			Expect(b.ServiceAdapter.adapter.CreateBinding().ReceivedID()).To(Equal("Gjklh45ljkhn"))
-			Expect(b.ServiceAdapter.adapter.CreateBinding().ReceivedBoshVms()).To(Equal(bosh.BoshVMs{"some-instance-group": []string{"ip.from.bosh"}}))
-			Expect(b.ServiceAdapter.adapter.CreateBinding().ReceivedRequestParameters()).To(Equal(map[string]interface{}{
-				"plan_id":    bindingPlanID,
-				"service_id": bindingServiceID,
-				"app_guid":   appGUID,
-				"bind_resource": map[string]interface{}{
-					"app_guid": appGUID,
-				},
-				"parameters": map[string]interface{}{"baz": "bar"},
-			}))
-			Expect(b.ServiceAdapter.adapter.CreateBinding().ReceivedManifest()).To(Equal(manifestForFirstDeployment))
-
-			// logs the bind request with a request id
-		})
+				// logs the bind request with a request id
+			})
 	})
 
 })
 
-func withBroker(test func(*Broker)) {
+func withBroker(aa AdapterAction, test func(*Broker)) {
 	broker := NewBroker(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), brokerPath.Path())
 	defer broker.Close()
-	broker.ServiceAdapter.ReturnsBinding()
+	aa.Pre(broker.ServiceAdapter)
 	broker.Start()
 	test(broker)
+	aa.Post(broker.ServiceAdapter)
 	broker.Verify()
 }
 

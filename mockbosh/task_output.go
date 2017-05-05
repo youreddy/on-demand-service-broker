@@ -26,6 +26,10 @@ func TaskOutput(taskId int) *taskOutputMock {
 	}
 }
 
+func (t *taskOutputMock) RespondsWithBody(body string) *mockhttp.Handler {
+	return t.RespondsOKWith(body)
+}
+
 func (t *taskOutputMock) RespondsWithVMsOutput(vms []boshclient.BoshVMsOutput) *mockhttp.Handler {
 	output := bytes.NewBuffer([]byte{})
 	encoder := json.NewEncoder(output)
