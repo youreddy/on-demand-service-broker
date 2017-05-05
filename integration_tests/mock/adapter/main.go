@@ -118,7 +118,7 @@ func (a *Adapter) CreateBinding(bindingID string, deploymentTopology bosh.BoshVM
 	credentialsToReturn := os.Getenv(mock.StdoutContentForBind)
 	credentials := serviceadapter.Binding{}
 	if err := json.Unmarshal([]byte(credentialsToReturn), &credentials); err != nil {
-		a.Logger.Println(err.Error())
+		a.Logger.Println("unmarshalling: ", credentialsToReturn, err.Error())
 		return serviceadapter.Binding{}, errors.New("")
 	}
 

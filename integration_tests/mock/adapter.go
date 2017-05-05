@@ -95,7 +95,7 @@ func (a Adapter) GenerateManifest() GenerateManifestCommandHandler {
 	return GenerateManifestCommandHandler{}
 }
 
-func (a Adapter) New() {
+func NewAdapter() *Adapter {
 	vars := []string{
 		AppGuidNotProvidedErrorExitCode,
 		StdoutContentForGenerate,
@@ -119,6 +119,8 @@ func (a Adapter) New() {
 	for _, f := range InputFiles {
 		os.Setenv(f, createTestFile())
 	}
+
+	return &Adapter{}
 }
 
 func (a Adapter) Cleanup() {
@@ -203,7 +205,7 @@ func (GenerateManifestCommandHandler) ReceivedPreviousPlan() serviceadapter.Plan
 	return plan
 }
 
-func (a Adapter) CreateBinding() CreateBindingCommandHandler {
+func (a *Adapter) CreateBinding() CreateBindingCommandHandler {
 	os.Unsetenv(ExitCodeForBind)
 	return CreateBindingCommandHandler{}
 }

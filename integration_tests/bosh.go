@@ -7,10 +7,14 @@
 package integration_tests
 
 import (
+	"math/rand"
+
+	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/mockbosh"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
 	"github.com/pivotal-cf/on-demand-service-broker/mockuaa"
+	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 )
 
 const (
@@ -50,4 +54,26 @@ func (b *Bosh) Verify() {
 func (b *Bosh) Close() {
 	b.UAA.Close()
 	b.Director.Close()
+}
+
+func (b *Bosh) ReturnsDeployment(serviceInstanceID string) {
+	taskID := rand.Int()
+	deploymentName := deploymentName(serviceInstanceID)
+	manifestForFirstDeployment := bosh.BoshManifest{
+		Name:           deploymentName,
+		Releases:       []bosh.Release{},
+		Stemcells:      []bosh.Stemcell{},
+		InstanceGroups: []bosh.InstanceGroup{},
+	}
+
+	b.Director.VerifyAndMock(
+		mockbosh.VMsForDeployment(deploymentName).RedirectsToTask(taskID),
+		mockbosh.Task(taskID).RespondsWithTaskContainingState(boshclient.BoshTaskDone),
+		mockbosh.TaskOutput(taskID).RespondsWithVMsOutput([]boshclient.BoshVMsOutput{{IPs: []string{"ip.from.bosh"}, InstanceGroup: "some-instance-group"}}),
+		mockbosh.GetDeployment(deploymentName).RespondsWithManifest(manifestForFirstDeployment),
+	)
+}
+
+func deploymentName(instanceID string) string {
+	return "service-instance_" + instanceID
 }

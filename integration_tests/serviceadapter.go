@@ -6,15 +6,20 @@
 
 package integration_tests
 
-import "github.com/pivotal-cf/on-demand-service-broker/config"
+import (
+	"github.com/pivotal-cf/on-demand-service-broker/config"
+	"github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock"
+)
 
 type ServiceAdapter struct {
-	Path string
+	Path    string
+	adapter *mock.Adapter
 }
 
 func NewServiceAdapter(path string) *ServiceAdapter {
 	return &ServiceAdapter{
-		Path: path,
+		Path:    path,
+		adapter: mock.NewAdapter(),
 	}
 }
 
@@ -22,4 +27,13 @@ func (sa *ServiceAdapter) Configuration() config.ServiceAdapter {
 	return config.ServiceAdapter{
 		Path: sa.Path,
 	}
+}
+
+func (sa *ServiceAdapter) ReturnsBinding() {
+	sa.adapter.CreateBinding().ReturnsBinding(`{
+					"credentials": {"secret": "dont-tell-anyone"},
+					"syslog_drain_url": "syslog-url",
+					"route_service_url": "excellent route"
+					}`)
+
 }

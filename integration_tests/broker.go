@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	brokerPort     = 37890
-	brokerUsername = "broker-username"
-	brokerPassword = "a-very-strong-password"
-	instanceID     = "some-binding-instance-ID"
-	bindingId      = "Gjklh45ljkhn"
+	brokerPort         = 37890
+	brokerUsername     = "broker-username"
+	brokerPassword     = "a-very-strong-password"
+	aServiceInstanceID = "some-service-instance-ID"
+	bindingId          = "Gjklh45ljkhn"
 
 	bindingPlanID    = "plan-guid-from-cc"
 	bindingServiceID = "service-guid-from-cc"
@@ -118,7 +118,7 @@ func (b *Broker) CreationRequest() *http.Request {
 	)
 
 	bindingReq, err := http.NewRequest("PUT",
-		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s/service_bindings/%s", brokerPort, instanceID, bindingId),
+		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s/service_bindings/%s", brokerPort, aServiceInstanceID, bindingId),
 		bytes.NewReader([]byte(reqJson)))
 	Expect(err).ToNot(HaveOccurred())
 	return withBasicAuth(bindingReq)
