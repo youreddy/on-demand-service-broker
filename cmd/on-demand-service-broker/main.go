@@ -135,7 +135,11 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 
 	brokerRouter := mux.NewRouter()
 	mgmtapi.AttachRoutes(brokerRouter, onDemandBroker, conf.ServiceCatalog, loggerFactory)
-	brokerapi.AttachRoutes(brokerRouter, onDemandBroker, lager.NewLogger("on-demand-service-broker"))
+
+	brokerAPILager := lager.NewLogger("odb-broker-api")
+	brokerAPILager.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+
+	brokerapi.AttachRoutes(brokerRouter, onDemandBroker, brokerAPILager)
 	authProtectedBrokerAPI := apiauth.NewWrapper(conf.Broker.Username, conf.Broker.Password).Wrap(brokerRouter)
 
 	negroniLogger := &negroni.Logger{ALogger: logger}

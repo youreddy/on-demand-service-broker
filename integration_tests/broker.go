@@ -82,8 +82,8 @@ func (b *Broker) configuration() config.Config {
 	return config.Config{
 		Broker: config.Broker{
 			Port:          brokerPort,
-			Username:      "boshUsername",
-			Password:      "boshPassword",
+			Username:      brokerUsername,
+			Password:      brokerPassword,
 			StartUpBanner: false,
 		},
 		Bosh:           b.Bosh.Configuration(),
@@ -108,8 +108,8 @@ func (b *Broker) Close() {
 
 func (b *Broker) CreationRequest() *http.Request {
 	reqJson := fmt.Sprintf(`{
-		"plan_id" : "%s"",
-		"service_id":  "%s"",
+		"plan_id" : "%s",
+		"service_id":  "%s",
 		"app_guid": "%s",
 		"bind_resource": { "app_guid": "%s"},
 		"parameters": {"baz": "bar"}
