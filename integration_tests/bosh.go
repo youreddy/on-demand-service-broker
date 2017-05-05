@@ -18,9 +18,17 @@ import (
 )
 
 const (
-	boshClientID     = "bosh-client-id"
-	boshClientSecret = "boshClientSecret"
+	boshClientID       = "bosh-client-id"
+	boshClientSecret   = "boshClientSecret"
+	boshDeploymentName = "service-instance_some-service-instance-ID"
 )
+
+var manifestForFirstDeployment = bosh.BoshManifest{
+	Name:           boshDeploymentName,
+	Releases:       []bosh.Release{},
+	Stemcells:      []bosh.Stemcell{},
+	InstanceGroups: []bosh.InstanceGroup{},
+}
 
 type Bosh struct {
 	Director *mockhttp.Server
@@ -56,24 +64,12 @@ func (b *Bosh) Close() {
 	b.Director.Close()
 }
 
-func (b *Bosh) ReturnsDeployment(serviceInstanceID string) {
+func (b *Bosh) ReturnsDeployment() {
 	taskID := rand.Int()
-	deploymentName := deploymentName(serviceInstanceID)
-	manifestForFirstDeployment := bosh.BoshManifest{
-		Name:           deploymentName,
-		Releases:       []bosh.Release{},
-		Stemcells:      []bosh.Stemcell{},
-		InstanceGroups: []bosh.InstanceGroup{},
-	}
-
 	b.Director.VerifyAndMock(
-		mockbosh.VMsForDeployment(deploymentName).RedirectsToTask(taskID),
+		mockbosh.VMsForDeployment(boshDeploymentName).RedirectsToTask(taskID),
 		mockbosh.Task(taskID).RespondsWithTaskContainingState(boshclient.BoshTaskDone),
 		mockbosh.TaskOutput(taskID).RespondsWithVMsOutput([]boshclient.BoshVMsOutput{{IPs: []string{"ip.from.bosh"}, InstanceGroup: "some-instance-group"}}),
-		mockbosh.GetDeployment(deploymentName).RespondsWithManifest(manifestForFirstDeployment),
+		mockbosh.GetDeployment(boshDeploymentName).RespondsWithManifest(manifestForFirstDeployment),
 	)
-}
-
-func deploymentName(instanceID string) string {
-	return "service-instance_" + instanceID
 }
