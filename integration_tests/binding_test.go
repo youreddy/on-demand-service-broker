@@ -7,6 +7,7 @@
 package integration_tests
 
 import (
+	"io/ioutil"
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
@@ -26,10 +27,10 @@ var _ = Describe("binding service instances", func() {
 			response, err := http.DefaultClient.Do(b.CreationRequest())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response.StatusCode).To(Equal(http.StatusCreated))
+			Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
 			// request a new binding from service to application application
 
-			// responds with Created and the binding details
 			// logs the bind request with an ID
 		})
 	})
@@ -43,4 +44,10 @@ func withBroker(test func(*Broker)) {
 	broker.Start()
 	test(broker)
 	broker.Verify()
+}
+
+func bodyOf(response *http.Response) []byte {
+	body, err := ioutil.ReadAll(response.Body)
+	Expect(err).NotTo(HaveOccurred())
+	return body
 }
