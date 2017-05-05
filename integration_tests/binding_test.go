@@ -11,20 +11,14 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
 )
 
 var (
-	brokerPath         string
-	serviceAdapterPath string
+	brokerPath         = NewBinary("github.com/pivotal-cf/on-demand-service-broker/cmd/on-demand-service-broker")
+	serviceAdapterPath = NewBinary("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
 )
 
 var _ = Describe("binding service instances", func() {
-	BeforeSuite(func() {
-		brokerPath = binaryFrom("github.com/pivotal-cf/on-demand-service-broker/cmd/on-demand-service-broker")
-		serviceAdapterPath = binaryFrom("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
-	})
-
 	It("binds a service to an application instance", func() {
 		withBroker(func(b *Broker) {
 			response, err := http.DefaultClient.Do(b.CreationRequest())
@@ -40,14 +34,8 @@ var _ = Describe("binding service instances", func() {
 
 })
 
-func binaryFrom(srcPath string) string {
-	brokerPath, err := gexec.Build(srcPath)
-	Expect(err).NotTo(HaveOccurred())
-	return brokerPath
-}
-
 func withBroker(test func(*Broker)) {
-	broker := NewBroker(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath), brokerPath)
+	broker := NewBroker(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), brokerPath.Path())
 	defer broker.Close()
 	broker.Start()
 	test(broker)
