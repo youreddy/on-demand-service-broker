@@ -29,7 +29,7 @@ var _ = Describe("binding service instances", func() {
 		b.Start()
 		b.Bosh.WillReturnDeployment()
 
-		response := responseTo(b.Broker.CreationRequest())
+		response := responseTo(b.Broker.CreateBindingRequest())
 
 		Expect(response.StatusCode).To(Equal(http.StatusCreated))
 		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
@@ -48,9 +48,10 @@ var _ = Describe("binding service instances", func() {
 		b.Start()
 		b.Bosh.WillReturnDeployment()
 
-		responseTo(b.Broker.CreationRequest())
+		response := responseTo(b.Broker.CreateBindingRequest())
+		Expect(response.StatusCode).To(Equal(http.StatusCreated))
+		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
-		b.Broker.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
 		b.Verify()
 	})
 

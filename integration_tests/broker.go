@@ -82,7 +82,7 @@ func (b *Broker) HasLogged(expectedString string) {
 	Eventually(b.session).Should(gbytes.Say(expectedString))
 }
 
-func (b *Broker) CreationRequest() *http.Request {
+func (b *Broker) CreateBindingRequest() *http.Request {
 	reqJson := fmt.Sprintf(`{
 		"plan_id" : "%s",
 		"service_id":  "%s",
