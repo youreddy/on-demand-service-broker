@@ -83,7 +83,7 @@ func (b *Broker) Update(
 	}
 
 	boshTaskID, _, err := b.deployer.Update(
-		deploymentName(instanceID),
+		DeploymentNameFrom(instanceID),
 		details.PlanID,
 		applyingChanges,
 		detailsMap,

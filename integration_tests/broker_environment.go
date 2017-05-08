@@ -7,12 +7,14 @@
 package integration_tests
 
 import (
+	"fmt"
+	"math/rand"
+
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 )
 
 const (
-	aServiceInstanceID = "some-service-instance-ID"
-	bindingId          = "Gjklh45ljkhn"
+	bindingId = "Gjklh45ljkhn"
 
 	bindingPlanID    = "plan-guid-from-cc"
 	bindingServiceID = "service-guid-from-cc"
@@ -64,4 +66,10 @@ func (be *BrokerEnvironment) Close() {
 	be.CF.Close()
 	be.Bosh.Close()
 	be.Credhub.Close()
+}
+
+type ServiceInstanceID string
+
+func AServiceInstanceID() ServiceInstanceID {
+	return ServiceInstanceID(fmt.Sprintf("service-instance-ID-%d", rand.Int()))
 }

@@ -82,7 +82,7 @@ func (b *Broker) HasLogged(expectedString string) {
 	Eventually(b.session).Should(gbytes.Say(expectedString))
 }
 
-func (b *Broker) CreateBindingRequest() *http.Request {
+func (b *Broker) CreateBindingRequest(serviceInstanceID ServiceInstanceID) *http.Request {
 	reqJson := fmt.Sprintf(`{
 		"plan_id" : "%s",
 		"service_id":  "%s",
@@ -94,7 +94,7 @@ func (b *Broker) CreateBindingRequest() *http.Request {
 	)
 
 	bindingReq, err := http.NewRequest("PUT",
-		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s/service_bindings/%s", brokerPort, aServiceInstanceID, bindingId),
+		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s/service_bindings/%s", brokerPort, serviceInstanceID, bindingId),
 		bytes.NewReader([]byte(reqJson)))
 	Expect(err).ToNot(HaveOccurred())
 	return withBasicAuth(bindingReq)

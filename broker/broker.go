@@ -79,7 +79,7 @@ type OperationData struct {
 
 const InstancePrefix = "service-instance_"
 
-func deploymentName(instanceID string) string {
+func DeploymentNameFrom(instanceID string) string {
 	return InstancePrefix + instanceID
 }
 

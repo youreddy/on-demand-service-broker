@@ -30,7 +30,7 @@ func (t *deploymentMock) RespondsWithRawManifest(manifest []byte) *mockhttp.Hand
 	return t.RespondsOKWithJSON(data)
 }
 
-func (t *deploymentMock) RespondsWithManifest(manifest bosh.BoshManifest) *mockhttp.Handler {
+func (t *deploymentMock) RespondsWithManifest(manifest *bosh.BoshManifest) *mockhttp.Handler {
 	data, err := yaml.Marshal(manifest)
 	Expect(err).NotTo(HaveOccurred())
 	return t.RespondsWithRawManifest(data)

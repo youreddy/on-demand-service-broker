@@ -26,14 +26,15 @@ var (
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
+		serviceInstanceID := AServiceInstanceID()
 		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
 		defer env.Close()
 		env.ServiceAdapter.ReturnsBinding()
 
 		env.Start()
-		env.Bosh.WillReturnDeployment()
+		env.Bosh.HasDeploymentFor(serviceInstanceID)
 
-		response := responseTo(env.Broker.CreateBindingRequest())
+		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
 
 		Expect(response.StatusCode).To(Equal(http.StatusCreated))
 		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
@@ -43,32 +44,34 @@ var _ = Describe("binding service instances", func() {
 	})
 
 	It("sends login details to credhub when credhub configured", func() {
+		serviceInstanceID := AServiceInstanceID()
 		mockCredhub := NewCredhub()
 		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), mockCredhub, brokerPath.Path())
 		defer env.Close()
 		env.ServiceAdapter.ReturnsBinding()
-		mockCredhub.WillReceiveCredentials()
+		mockCredhub.WillReceiveCredentials(serviceInstanceID)
 
 		env.Start()
-		env.Bosh.WillReturnDeployment()
+		env.Bosh.HasDeploymentFor(serviceInstanceID)
 
-		response := responseTo(env.Broker.CreateBindingRequest())
+		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
 		Expect(response.StatusCode).To(Equal(http.StatusCreated))
 		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
 		env.Verify()
 	})
 
-	It("reports failure when rejected by adapter", func() {
+	It("fails when rejected by adapter", func() {
+		serviceInstanceID := AServiceInstanceID()
 		stderrMessage := fmt.Sprintf("binding stderr message-%d", rand.Int())
 		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
 		defer env.Close()
 		env.ServiceAdapter.FailsToBindBecause(sdk.BindingAlreadyExistsErrorExitCode, stderrMessage)
 
 		env.Start()
-		env.Bosh.WillReturnDeployment()
+		env.Bosh.HasDeploymentFor(serviceInstanceID)
 
-		response := responseTo(env.Broker.CreateBindingRequest())
+		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
 		Expect(response.StatusCode).To(Equal(http.StatusConflict))
 		Expect(bodyOf(response)).To(MatchJSON(errorResponse(adapterclient.BindingAlreadyExistsMessage)))
 
@@ -76,18 +79,35 @@ var _ = Describe("binding service instances", func() {
 		env.Verify()
 	})
 
-	It("reports failure when bosh is unreachable", func() {
+	It("fails when bosh is unreachable", func() {
+		serviceInstanceID := AServiceInstanceID()
 		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
 		defer env.Close()
 
 		env.Start()
 		env.Bosh.Close()
 
-		response := responseTo(env.Broker.CreateBindingRequest())
+		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
 		Expect(response.StatusCode).To(Equal(http.StatusInternalServerError))
 		Expect(bodyOf(response)).To(MatchJSON(errorResponse("Currently unable to bind service instance, please try again later")))
 
 		env.Broker.HasLogged(boshclient.UnreachableMessage)
+		env.Verify()
+	})
+
+	It("fails when bosh deployment doesn't exist", func() {
+		serviceInstanceID := AServiceInstanceID()
+		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
+		defer env.Close()
+
+		env.Start()
+		env.Bosh.HasNoDeploymentFor(serviceInstanceID)
+
+		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
+		Expect(response.StatusCode).To(Equal(http.StatusNotFound))
+		Expect(bodyOf(response)).To(MatchJSON(errorResponse("instance does not exist")))
+
+		env.Broker.HasLogged(fmt.Sprintf("binding: instance %s, not found", serviceInstanceID))
 		env.Verify()
 	})
 

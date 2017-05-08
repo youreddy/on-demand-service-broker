@@ -61,7 +61,7 @@ func (b *Broker) Deprovision(
 }
 
 func (b *Broker) assertDeploymentExists(ctx context.Context, instanceID string, logger *log.Logger) DisplayableError {
-	_, deploymentFound, err := b.boshClient.GetDeployment(deploymentName(instanceID), logger)
+	_, deploymentFound, err := b.boshClient.GetDeployment(DeploymentNameFrom(instanceID), logger)
 
 	switch err.(type) {
 	case boshclient.RequestError:
@@ -69,7 +69,7 @@ func (b *Broker) assertDeploymentExists(ctx context.Context, instanceID string, 
 	case error:
 		return NewGenericError(
 			ctx,
-			fmt.Errorf("error deprovisioning: cannot get deployment %s: %s", deploymentName(instanceID), err),
+			fmt.Errorf("error deprovisioning: cannot get deployment %s: %s", DeploymentNameFrom(instanceID), err),
 		)
 	}
 
@@ -85,14 +85,14 @@ func (b *Broker) assertDeploymentExists(ctx context.Context, instanceID string, 
 
 func (b *Broker) assertNoOperationsInProgress(ctx context.Context, instanceID string, logger *log.Logger) DisplayableError {
 
-	tasks, err := b.boshClient.GetTasks(deploymentName(instanceID), logger)
+	tasks, err := b.boshClient.GetTasks(DeploymentNameFrom(instanceID), logger)
 	switch err.(type) {
 	case boshclient.RequestError:
 		return NewBoshRequestError("delete", err)
 	case error:
 		return NewGenericError(
 			ctx,
-			fmt.Errorf("error deprovisioning: cannot get tasks for deployment %s: %s\n", deploymentName(instanceID), err),
+			fmt.Errorf("error deprovisioning: cannot get tasks for deployment %s: %s\n", DeploymentNameFrom(instanceID), err),
 		)
 	}
 
@@ -101,7 +101,7 @@ func (b *Broker) assertNoOperationsInProgress(ctx context.Context, instanceID st
 		userError := errors.New("An operation is in progress for your service instance. Please try again later.")
 		operatorError := NewOperationInProgressError(
 			fmt.Errorf("error deprovisioning: deployment %s is still in progress: tasks %s\n",
-				deploymentName(instanceID),
+				DeploymentNameFrom(instanceID),
 				incompleteTasks.ToLog()),
 		)
 		return NewDisplayableError(userError, operatorError)
@@ -121,7 +121,7 @@ func (b *Broker) runPreDeleteErrand(
 	boshContextID := uuid.New()
 
 	taskID, err := b.boshClient.RunErrand(
-		deploymentName(instanceID),
+		DeploymentNameFrom(instanceID),
 		preDeleteErrand,
 		boshContextID,
 		logger,
@@ -150,7 +150,7 @@ func (b *Broker) deleteInstance(
 	logger *log.Logger,
 ) (brokerapi.DeprovisionServiceSpec, error) {
 	logger.Printf("deleting deployment for instance %s\n", instanceID)
-	taskID, err := b.boshClient.DeleteDeployment(deploymentName(instanceID), "", logger)
+	taskID, err := b.boshClient.DeleteDeployment(DeploymentNameFrom(instanceID), "", logger)
 	switch err.(type) {
 	case boshclient.RequestError:
 		return deprovisionErr(NewBoshRequestError("delete", err), logger)

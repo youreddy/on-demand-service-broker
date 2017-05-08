@@ -38,8 +38,8 @@ func NewCredhub() *MockCredhub {
 	}
 }
 
-func (c *MockCredhub) WillReceiveCredentials() {
-	credhubBindingServiceId := fmt.Sprintf("%s/%s", aServiceInstanceID, bindingId)
+func (c *MockCredhub) WillReceiveCredentials(serviceInstanceID ServiceInstanceID) {
+	credhubBindingServiceId := fmt.Sprintf("%s/%s", serviceInstanceID, bindingId)
 
 	c.Credhub.VerifyAndMock(
 		mockcredhub.GetInfo().RespondsWithUAAURL(c.credhubUaa.URL),

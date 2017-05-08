@@ -84,7 +84,7 @@ func (b *Broker) provisionInstance(ctx context.Context, instanceID string, planI
 		))
 	}
 
-	_, found, err := b.boshClient.GetDeployment(deploymentName(instanceID), logger)
+	_, found, err := b.boshClient.GetDeployment(DeploymentNameFrom(instanceID), logger)
 	switch err := err.(type) {
 	case boshclient.RequestError:
 		return errs(NewBoshRequestError("create", fmt.Errorf("could not get manifest: %s", err)))
@@ -130,7 +130,7 @@ func (b *Broker) provisionInstance(ctx context.Context, instanceID string, planI
 		operationPostDeployErrand = plan.PostDeployErrand()
 	}
 
-	boshTaskID, manifest, err := b.deployer.Create(deploymentName(instanceID), plan.ID, requestParams, boshContextID, logger)
+	boshTaskID, manifest, err := b.deployer.Create(DeploymentNameFrom(instanceID), plan.ID, requestParams, boshContextID, logger)
 	switch err := err.(type) {
 	case boshclient.RequestError:
 		return errs(NewBoshRequestError("create", err))

@@ -76,11 +76,11 @@ func (b *Broker) LastOperation(ctx context.Context, instanceID, operationDataRaw
 
 	lifeCycleRunner := NewLifeCycleRunner(b.boshClient, b.serviceOffering.Plans)
 
-	lastBoshTask, err := lifeCycleRunner.GetTask(deploymentName(instanceID), operationData, logger)
+	lastBoshTask, err := lifeCycleRunner.GetTask(DeploymentNameFrom(instanceID), operationData, logger)
 	if err != nil {
 		return errs(NewGenericError(ctx, fmt.Errorf(
 			"error retrieving tasks from bosh, for deployment '%s': %s",
-			deploymentName(instanceID), err,
+			DeploymentNameFrom(instanceID), err,
 		)))
 	}
 

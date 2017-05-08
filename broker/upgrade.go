@@ -45,7 +45,7 @@ func (b *Broker) Upgrade(ctx context.Context, instanceID string, logger *log.Log
 	}
 
 	taskID, _, err := b.deployer.Upgrade(
-		deploymentName(instanceID),
+		DeploymentNameFrom(instanceID),
 		instance.PlanID,
 		&instance.PlanID,
 		boshContextID,

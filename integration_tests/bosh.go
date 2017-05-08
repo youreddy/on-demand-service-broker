@@ -10,6 +10,7 @@ import (
 	"math/rand"
 
 	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
+	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/mockbosh"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
@@ -18,18 +19,10 @@ import (
 )
 
 const (
-	boshClientID       = "bosh-client-id"
-	boshClientSecret   = "boshClientSecret"
-	boshDeploymentName = "service-instance_some-service-instance-ID"
-	boshVMDescription  = `{"IPs" : ["ip.from.bosh"], "job_name": "some-instance-group"}`
+	boshClientID      = "bosh-client-id"
+	boshClientSecret  = "boshClientSecret"
+	boshVMDescription = `{"IPs" : ["ip.from.bosh"], "job_name": "some-instance-group"}`
 )
-
-var manifestForFirstDeployment = bosh.BoshManifest{
-	Name:           boshDeploymentName,
-	Releases:       []bosh.Release{},
-	Stemcells:      []bosh.Stemcell{},
-	InstanceGroups: []bosh.InstanceGroup{},
-}
 
 type Bosh struct {
 	Director *mockhttp.Server
@@ -65,12 +58,20 @@ func (b *Bosh) Close() {
 	b.Director.Close()
 }
 
-func (b *Bosh) WillReturnDeployment() {
+func (b *Bosh) HasDeploymentFor(id ServiceInstanceID) {
+	boshDeploymentName := broker.DeploymentNameFrom(string(id))
 	taskID := rand.Int()
+
 	b.Director.VerifyAndMock(
 		mockbosh.VMsForDeployment(boshDeploymentName).RedirectsToTask(taskID),
 		mockbosh.Task(taskID).RespondsWithTaskContainingState(boshclient.BoshTaskDone),
 		mockbosh.TaskOutput(taskID).RespondsWithBody(boshVMDescription),
-		mockbosh.GetDeployment(boshDeploymentName).RespondsWithManifest(manifestForFirstDeployment),
+		mockbosh.GetDeployment(boshDeploymentName).RespondsWithManifest(&bosh.BoshManifest{Name: boshDeploymentName}),
+	)
+}
+
+func (b *Bosh) HasNoDeploymentFor(id ServiceInstanceID) {
+	b.Director.VerifyAndMock(
+		mockbosh.VMsForDeployment(broker.DeploymentNameFrom(string(id))).RespondsNotFoundWith(""),
 	)
 }

@@ -16,11 +16,11 @@ import (
 )
 
 func (b *Broker) getDeploymentInfo(instanceID string, logger *log.Logger) (bosh.BoshVMs, []byte, error) {
-	vms, err := b.boshClient.VMs(deploymentName(instanceID), logger)
+	vms, err := b.boshClient.VMs(DeploymentNameFrom(instanceID), logger)
 	if err != nil {
 		return nil, nil, err
 	}
-	manifest, found, err := b.boshClient.GetDeployment(deploymentName(instanceID), logger)
+	manifest, found, err := b.boshClient.GetDeployment(DeploymentNameFrom(instanceID), logger)
 	if !found {
 		return nil, nil, fmt.Errorf("manifest not found for deployment: %s", instanceID)
 	}
