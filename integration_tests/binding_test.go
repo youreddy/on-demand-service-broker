@@ -21,17 +21,15 @@ var (
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
-		withBroker(
+		withBroker(func(b *BrokerEnvironment) {
+			b.Bosh.ReturnsDeployment()
 
-			func(b *Broker) {
-				b.Bosh.ReturnsDeployment()
+			response := responseTo(b.CreationRequest())
+			Expect(response.StatusCode).To(Equal(http.StatusCreated))
+			Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
-				response := responseTo(b.CreationRequest())
-				Expect(response.StatusCode).To(Equal(http.StatusCreated))
-				Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
-
-				// logs the bind request with a request id
-			})
+			// logs the bind request with a request id
+		})
 	})
 })
 
@@ -41,13 +39,13 @@ func responseTo(request *http.Request) *http.Response {
 	return response
 }
 
-func withBroker(test func(*Broker)) {
-	broker := NewBroker(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), brokerPath.Path())
-	defer broker.Close()
-	broker.ServiceAdapter.ReturnsBinding()
-	broker.Start()
-	test(broker)
-	broker.Verify()
+func withBroker(test func(*BrokerEnvironment)) {
+	environment := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), brokerPath.Path())
+	defer environment.Close()
+	environment.ServiceAdapter.ReturnsBinding()
+	environment.Start()
+	test(environment)
+	environment.Verify()
 }
 
 func bodyOf(response *http.Response) []byte {

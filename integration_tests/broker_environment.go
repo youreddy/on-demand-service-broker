@@ -35,9 +35,7 @@ const (
 	appGUID          = "app-guid-from-cc"
 )
 
-//TODO should be a TestContext?
-
-type Broker struct {
+type BrokerEnvironment struct {
 	Bosh           *Bosh
 	CF             *CloudFoundry
 	ServiceAdapter *ServiceAdapter
@@ -46,11 +44,11 @@ type Broker struct {
 	Session        *gexec.Session
 }
 
-func NewBroker(bosh *Bosh, cf *CloudFoundry, serviceAdapter *ServiceAdapter, path string) *Broker {
+func NewBrokerEnvironment(bosh *Bosh, cf *CloudFoundry, serviceAdapter *ServiceAdapter, path string) *BrokerEnvironment {
 	tempDirPath, err := ioutil.TempDir("", fmt.Sprintf("broker-integration-tests-%d", GinkgoParallelNode()))
 	Expect(err).ToNot(HaveOccurred())
 
-	return &Broker{
+	return &BrokerEnvironment{
 		Bosh:           bosh,
 		CF:             cf,
 		ServiceAdapter: serviceAdapter,
@@ -59,7 +57,7 @@ func NewBroker(bosh *Bosh, cf *CloudFoundry, serviceAdapter *ServiceAdapter, pat
 	}
 }
 
-func (b *Broker) Start() {
+func (b *BrokerEnvironment) Start() {
 	b.CF.RespondsToInitialChecks()
 	b.Bosh.RespondsToInitialChecks()
 
@@ -71,7 +69,7 @@ func (b *Broker) Start() {
 	b.Session = session
 }
 
-func (b *Broker) configurationFile() string {
+func (b *BrokerEnvironment) configurationFile() string {
 	testConfigFilePath := filepath.Join(b.tempDirPath, "broker.yml")
 
 	configContents, err := yaml.Marshal(b.configuration())
@@ -80,7 +78,7 @@ func (b *Broker) configurationFile() string {
 	return testConfigFilePath
 }
 
-func (b *Broker) configuration() config.Config {
+func (b *BrokerEnvironment) configuration() config.Config {
 	return config.Config{
 		Broker: config.Broker{
 			Port:          brokerPort,
@@ -94,12 +92,12 @@ func (b *Broker) configuration() config.Config {
 	}
 }
 
-func (b *Broker) Verify() {
+func (b *BrokerEnvironment) Verify() {
 	b.Bosh.Verify()
 	b.CF.Verify()
 }
 
-func (b *Broker) Close() {
+func (b *BrokerEnvironment) Close() {
 	if b.Session != nil {
 		b.Session.Kill()
 	}
@@ -108,7 +106,7 @@ func (b *Broker) Close() {
 	Expect(os.RemoveAll(b.tempDirPath)).To(Succeed())
 }
 
-func (b *Broker) CreationRequest() *http.Request {
+func (b *BrokerEnvironment) CreationRequest() *http.Request {
 	reqJson := fmt.Sprintf(`{
 		"plan_id" : "%s",
 		"service_id":  "%s",
