@@ -11,6 +11,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/craigfurman/herottp"
+	"github.com/pivotal-cf/on-demand-service-broker/brokerclient"
 	"github.com/pivotal-cf/on-demand-service-broker/loggerfactory"
 	"github.com/pivotal-cf/on-demand-service-broker/upgrader"
 )
@@ -33,8 +35,9 @@ func main() {
 		logger.Fatalln("the pollingInterval must be greater than zero")
 	}
 
+	httpClient := herottp.New(herottp.Config{Timeout: 30 * time.Second})
+	brokerServices := brokerclient.NewBrokerServices(*brokerUsername, *brokerPassword, *brokerUrl, httpClient)
 	listener := upgrader.NewLoggingListener(logger)
-	brokerServices := upgrader.NewBrokerServicesHTTPClient(*brokerUsername, *brokerPassword, *brokerUrl, 30*time.Second)
 	upgradeTool := upgrader.New(brokerServices, *pollingInterval, listener)
 
 	err := upgradeTool.Upgrade()
