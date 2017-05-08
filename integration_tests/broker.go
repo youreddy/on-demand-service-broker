@@ -35,6 +35,8 @@ const (
 	appGUID          = "app-guid-from-cc"
 )
 
+//TODO should be a TestContext?
+
 type Broker struct {
 	Bosh           *Bosh
 	CF             *CloudFoundry

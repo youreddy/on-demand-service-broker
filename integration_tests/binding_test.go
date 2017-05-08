@@ -14,8 +14,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// TODO SF We should be mocking out the underlying service, not the adapter. Create a web implementation of adapter, and a stub adapter that forwards to it.
-
 var (
 	brokerPath         = NewBinary("github.com/pivotal-cf/on-demand-service-broker/cmd/on-demand-service-broker")
 	serviceAdapterPath = NewBinary("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
@@ -24,7 +22,7 @@ var (
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
 		withBroker(
-			CreatesBinding(),
+
 			func(b *Broker) {
 				b.Bosh.ReturnsDeployment()
 
@@ -43,13 +41,12 @@ func responseTo(request *http.Request) *http.Response {
 	return response
 }
 
-func withBroker(aa AdapterAction, test func(*Broker)) {
+func withBroker(test func(*Broker)) {
 	broker := NewBroker(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), brokerPath.Path())
 	defer broker.Close()
-	aa.Pre(broker.ServiceAdapter)
+	broker.ServiceAdapter.ReturnsBinding()
 	broker.Start()
 	test(broker)
-	aa.Post(broker.ServiceAdapter)
 	broker.Verify()
 }
 
