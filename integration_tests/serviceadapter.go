@@ -11,8 +11,9 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock"
 )
 
+const BindingCredentials = `{"secret":"dont-tell-anyone"}`
 const BindingResponse = `{
-					"credentials": {"secret": "dont-tell-anyone"},
+					"credentials": {"secret":"dont-tell-anyone"},
 					"syslog_drain_url": "syslog-url",
 					"route_service_url": "excellent route"
 					}`

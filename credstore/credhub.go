@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"errors"
 	"github.com/pivotal-cf/credhub-cli/actions"
 	"github.com/pivotal-cf/credhub-cli/client"
 	"github.com/pivotal-cf/credhub-cli/commands"
@@ -37,7 +38,7 @@ func NewCredhubClient(url, id, secret string, disableSSLCertVertification bool) 
 func (c *Credhub) PutCredentials(identifier string, credentialsMap map[string]interface{}) error {
 	rawCredentials, err := json.Marshal(credentialsMap)
 	if err != nil {
-		return fmt.Errorf("error marshalling credentials")
+		return errors.New("error marshalling credentials")
 	}
 
 	cfg := config.Config{}
@@ -49,7 +50,7 @@ func (c *Credhub) PutCredentials(identifier string, credentialsMap map[string]in
 
 	cfg.AccessToken, cfg.RefreshToken, err = c.getCredhubTokens(cfg, httpClient)
 	if err != nil {
-		return fmt.Errorf("error getting credhub auth token")
+		return errors.New("error getting credhub auth token")
 	}
 
 	req := client.NewPutPasswordRequest(cfg, identifier, string(rawCredentials), false)

@@ -36,24 +36,26 @@ const (
 )
 
 type BrokerEnvironment struct {
-	Bosh           *Bosh
-	CF             *CloudFoundry
-	ServiceAdapter *ServiceAdapter
-	Path           string
-	tempDirPath    string
-	Session        *gexec.Session
+	Bosh             *Bosh
+	CF               *CloudFoundry
+	ServiceAdapter   *ServiceAdapter
+	Credhub          Credhub
+	BrokerBinaryPath string
+	tempDirPath      string
+	Session          *gexec.Session
 }
 
-func NewBrokerEnvironment(bosh *Bosh, cf *CloudFoundry, serviceAdapter *ServiceAdapter, path string) *BrokerEnvironment {
+func NewBrokerEnvironment(bosh *Bosh, cf *CloudFoundry, serviceAdapter *ServiceAdapter, credhub Credhub, brokerBinaryPath string) *BrokerEnvironment {
 	tempDirPath, err := ioutil.TempDir("", fmt.Sprintf("broker-integration-tests-%d", GinkgoParallelNode()))
 	Expect(err).ToNot(HaveOccurred())
 
 	return &BrokerEnvironment{
-		Bosh:           bosh,
-		CF:             cf,
-		ServiceAdapter: serviceAdapter,
-		Path:           path,
-		tempDirPath:    tempDirPath,
+		Bosh:             bosh,
+		CF:               cf,
+		ServiceAdapter:   serviceAdapter,
+		Credhub:          credhub,
+		BrokerBinaryPath: brokerBinaryPath,
+		tempDirPath:      tempDirPath,
 	}
 }
 
@@ -62,7 +64,7 @@ func (b *BrokerEnvironment) Start() {
 	b.Bosh.RespondsToInitialChecks()
 
 	params := []string{"-configFilePath", b.configurationFile()}
-	session, err := gexec.Start(exec.Command(b.Path, params...), GinkgoWriter, GinkgoWriter)
+	session, err := gexec.Start(exec.Command(b.BrokerBinaryPath, params...), GinkgoWriter, GinkgoWriter)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(session).Should(gbytes.Say("listening on"))
 
@@ -89,12 +91,14 @@ func (b *BrokerEnvironment) configuration() config.Config {
 		Bosh:           b.Bosh.Configuration(),
 		CF:             b.CF.Configuration(),
 		ServiceAdapter: b.ServiceAdapter.Configuration(),
+		Credhub:        b.Credhub.Configuration(),
 	}
 }
 
 func (b *BrokerEnvironment) Verify() {
 	b.Bosh.Verify()
 	b.CF.Verify()
+	b.Credhub.Verify()
 }
 
 func (b *BrokerEnvironment) Close() {
@@ -103,6 +107,7 @@ func (b *BrokerEnvironment) Close() {
 	}
 	b.CF.Close()
 	b.Bosh.Close()
+	b.Credhub.Close()
 	Expect(os.RemoveAll(b.tempDirPath)).To(Succeed())
 }
 

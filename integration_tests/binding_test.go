@@ -22,17 +22,37 @@ var (
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
-		withBroker(func(b *BrokerEnvironment) {
-			b.Bosh.WillReturnDeployment()
+		b := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
+		defer b.Close()
+		b.ServiceAdapter.ReturnsBinding()
+		b.Start()
+		b.Bosh.WillReturnDeployment()
 
-			response := responseTo(b.CreationRequest())
+		response := responseTo(b.CreationRequest())
 
-			Expect(response.StatusCode).To(Equal(http.StatusCreated))
-			Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
+		Expect(response.StatusCode).To(Equal(http.StatusCreated))
+		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
-			b.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
-		})
+		b.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
+		b.Verify()
 	})
+
+	It("sends login details to credhub when credhub configured", func() {
+		mockCredhub := NewCredhub()
+		b := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), mockCredhub, brokerPath.Path())
+		defer b.Close()
+		b.ServiceAdapter.ReturnsBinding()
+		mockCredhub.WillReceiveCredentials()
+
+		b.Start()
+		b.Bosh.WillReturnDeployment()
+
+		responseTo(b.CreationRequest())
+
+		b.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
+		b.Verify()
+	})
+
 })
 
 func responseTo(request *http.Request) *http.Response {
@@ -42,7 +62,7 @@ func responseTo(request *http.Request) *http.Response {
 }
 
 func withBroker(test func(*BrokerEnvironment)) {
-	environment := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), brokerPath.Path())
+	environment := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NewCredhub(), brokerPath.Path())
 	defer environment.Close()
 	environment.ServiceAdapter.ReturnsBinding()
 	environment.Start()
