@@ -24,21 +24,24 @@ import (
 )
 
 const (
-	brokerPort     = 37890
+	brokerBasePort = 37890
 	brokerUsername = "broker-username"
 	brokerPassword = "a-very-strong-password"
 )
 
 type Broker struct {
+	port             int
 	brokerBinaryPath string
 	session          *gexec.Session
 	tempDirPath      string
 }
 
 func NewBroker(brokerBinaryPath string) *Broker {
-	tempDirPath, err := ioutil.TempDir("", fmt.Sprintf("broker-integration-tests-%d", GinkgoParallelNode()))
+	node := GinkgoParallelNode()
+	tempDirPath, err := ioutil.TempDir("", fmt.Sprintf("broker-integration-tests-%d", node))
 	Expect(err).ToNot(HaveOccurred())
 	return &Broker{
+		port:             brokerBasePort + node,
 		tempDirPath:      tempDirPath,
 		brokerBinaryPath: brokerBinaryPath,
 	}
@@ -64,7 +67,7 @@ func (b *Broker) configurationFile(configuration *config.Config) string {
 
 func (b *Broker) Configuration() config.Broker {
 	return config.Broker{
-		Port:          brokerPort,
+		Port:          b.port,
 		Username:      brokerUsername,
 		Password:      brokerPassword,
 		StartUpBanner: false,
@@ -94,7 +97,7 @@ func (b *Broker) CreateBindingRequest(serviceInstanceID ServiceInstanceID) *http
 	)
 
 	bindingReq, err := http.NewRequest("PUT",
-		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s/service_bindings/%s", brokerPort, serviceInstanceID, bindingId),
+		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s/service_bindings/%s", b.port, serviceInstanceID, bindingId),
 		bytes.NewReader([]byte(reqJson)))
 	Expect(err).ToNot(HaveOccurred())
 	return withBasicAuth(bindingReq)

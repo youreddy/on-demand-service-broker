@@ -115,7 +115,7 @@ var _ = Describe("binding service instances", func() {
 				mockbosh.VMsForDeployment(deploymentName(instanceID)).RedirectsToTask(2015),
 				mockbosh.Task(2015).RespondsWithTaskContainingState(boshclient.BoshTaskDone),
 				mockbosh.TaskOutput(2015).RespondsWithVMsOutput([]boshclient.BoshVMsOutput{{IPs: []string{"ip.from.bosh"}, InstanceGroup: "some-instance-group"}}),
-				mockbosh.GetDeployment(deploymentName(instanceID)).RespondsWithManifest(manifestForFirstDeployment),
+				mockbosh.GetDeployment(deploymentName(instanceID)).RespondsWithManifest(&manifestForFirstDeployment),
 			)
 			reqBody := map[string]interface{}{
 				"plan_id":    bindingPlanID,

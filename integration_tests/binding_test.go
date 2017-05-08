@@ -49,15 +49,16 @@ var _ = Describe("binding service instances", func() {
 		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), mockCredhub, brokerPath.Path())
 		defer env.Close()
 		env.ServiceAdapter.ReturnsBinding()
-		mockCredhub.WillReceiveCredentials(serviceInstanceID)
 
 		env.Start()
 		env.Bosh.HasDeploymentFor(serviceInstanceID)
+		mockCredhub.WillReceiveCredentials(serviceInstanceID)
 
 		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
 		Expect(response.StatusCode).To(Equal(http.StatusCreated))
 		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
+		env.Broker.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
 		env.Verify()
 	})
 
