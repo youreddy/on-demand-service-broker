@@ -25,15 +25,16 @@ var _ = Describe("binding service instances", func() {
 		b := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
 		defer b.Close()
 		b.ServiceAdapter.ReturnsBinding()
+
 		b.Start()
 		b.Bosh.WillReturnDeployment()
 
-		response := responseTo(b.CreationRequest())
+		response := responseTo(b.Broker.CreationRequest())
 
 		Expect(response.StatusCode).To(Equal(http.StatusCreated))
 		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
-		b.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
+		b.Broker.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
 		b.Verify()
 	})
 
@@ -47,9 +48,9 @@ var _ = Describe("binding service instances", func() {
 		b.Start()
 		b.Bosh.WillReturnDeployment()
 
-		responseTo(b.CreationRequest())
+		responseTo(b.Broker.CreationRequest())
 
-		b.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
+		b.Broker.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
 		b.Verify()
 	})
 
