@@ -9,10 +9,13 @@ package integration_tests
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-cf/on-demand-service-broker/adapterclient"
+	sdk "github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
 
 var (
@@ -22,39 +25,56 @@ var (
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
-		b := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
-		defer b.Close()
-		b.ServiceAdapter.ReturnsBinding()
+		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
+		defer env.Close()
+		env.ServiceAdapter.ReturnsBinding()
 
-		b.Start()
-		b.Bosh.WillReturnDeployment()
+		env.Start()
+		env.Bosh.WillReturnDeployment()
 
-		response := responseTo(b.Broker.CreateBindingRequest())
+		response := responseTo(env.Broker.CreateBindingRequest())
 
 		Expect(response.StatusCode).To(Equal(http.StatusCreated))
 		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
-		b.Broker.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
-		b.Verify()
+		env.Broker.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
+		env.Verify()
 	})
 
 	It("sends login details to credhub when credhub configured", func() {
 		mockCredhub := NewCredhub()
-		b := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), mockCredhub, brokerPath.Path())
-		defer b.Close()
-		b.ServiceAdapter.ReturnsBinding()
+		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), mockCredhub, brokerPath.Path())
+		defer env.Close()
+		env.ServiceAdapter.ReturnsBinding()
 		mockCredhub.WillReceiveCredentials()
 
-		b.Start()
-		b.Bosh.WillReturnDeployment()
+		env.Start()
+		env.Bosh.WillReturnDeployment()
 
-		response := responseTo(b.Broker.CreateBindingRequest())
+		response := responseTo(env.Broker.CreateBindingRequest())
 		Expect(response.StatusCode).To(Equal(http.StatusCreated))
 		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
-		b.Verify()
+		env.Verify()
 	})
 
+	It("fails when binding already exists", func() {
+		stderrMessage := fmt.Sprintf("binding stderr message-%d", rand.Int())
+		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
+		defer env.Close()
+		env.ServiceAdapter.FailsToBindBecause(sdk.BindingAlreadyExistsErrorExitCode, stderrMessage)
+
+		env.Start()
+		env.Bosh.WillReturnDeployment()
+
+		response := responseTo(env.Broker.CreateBindingRequest())
+
+		Expect(response.StatusCode).To(Equal(http.StatusConflict))
+		Expect(bodyOf(response)).To(MatchJSON(fmt.Sprintf(`{"description": "%s"}`, adapterclient.BindingAlreadyExistsMessage)))
+
+		env.Broker.HasLogged(stderrMessage)
+		env.Verify()
+	})
 })
 
 func responseTo(request *http.Request) *http.Response {

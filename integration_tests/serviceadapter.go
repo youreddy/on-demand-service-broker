@@ -39,3 +39,7 @@ func (sa *ServiceAdapter) Configuration() config.ServiceAdapter {
 func (sa *ServiceAdapter) ReturnsBinding() {
 	sa.adapter.CreateBinding().ReturnsBinding(BindingResponse)
 }
+
+func (sa *ServiceAdapter) FailsToBindBecause(exitCode int, stderr string) {
+	sa.adapter.CreateBinding().FailsBecause(exitCode, stderr)
+}

@@ -54,12 +54,19 @@ func sanitiseValueForJSON(obj interface{}) interface{} {
 	}
 }
 
+const (
+	NotImplementedMessage       = "command not implemented by service adapter"
+	GUID_NotProvidedMessage     = "app GUID not provided"
+	BindingAlreadyExistsMessage = "binding already exists"
+	BindingNotFoundMessage      = "binding not found"
+)
+
 var exitCodeMap = map[int]error{
 	SuccessExitCode:                       nil,
-	sdk.NotImplementedExitCode:            NotImplementedError{errors.New("command not implemented by service adapter")},
-	sdk.AppGuidNotProvidedErrorExitCode:   AppGuidNotProvidedError{errors.New("app GUID not provided")},
-	sdk.BindingAlreadyExistsErrorExitCode: BindingAlreadyExistsError{errors.New("binding already exists")},
-	sdk.BindingNotFoundErrorExitCode:      BindingNotFoundError{errors.New("binding not found")},
+	sdk.NotImplementedExitCode:            NotImplementedError{errors.New(NotImplementedMessage)},
+	sdk.AppGuidNotProvidedErrorExitCode:   AppGuidNotProvidedError{errors.New(GUID_NotProvidedMessage)},
+	sdk.BindingAlreadyExistsErrorExitCode: BindingAlreadyExistsError{errors.New(BindingAlreadyExistsMessage)},
+	sdk.BindingNotFoundErrorExitCode:      BindingNotFoundError{errors.New(BindingNotFoundMessage)},
 }
 
 func ErrorForExitCode(code int, message string) error {

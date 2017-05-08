@@ -9,6 +9,7 @@ package mock
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -87,6 +88,39 @@ func testResponseFor(env string) []byte {
 
 func decodeTestResponse(env string, obj interface{}) {
 	Expect(json.NewDecoder(bytes.NewReader(testResponseFor(env))).Decode(obj)).To(Succeed())
+}
+
+type AdapterResponse struct {
+	Key      string
+	ExitCode int
+	Stdout   string
+	Stderr   string
+}
+
+func (ar *AdapterResponse) Set() {
+	os.Setenv(ExitCodeForBind, string(ar.ExitCode))
+	if ar.Stdout == "" {
+		os.Unsetenv(StdoutContentForBind)
+	} else {
+		os.Setenv(StdoutContentForBind, ar.Stdout)
+	}
+	if ar.Stderr == "" {
+		os.Unsetenv(StderrContentForBind)
+	} else {
+		os.Setenv(StderrContentForBind, ar.Stderr)
+	}
+}
+
+func (ar *AdapterResponse) setIO(channelName, value string) {
+	key := ar.ioKey(channelName)
+	if value == "" {
+		os.Unsetenv(key)
+	} else {
+		os.Setenv(key, value)
+	}
+}
+func (ar *AdapterResponse) ioKey(channelName string) string {
+	return fmt.Sprintf("TEST_ADAPTER_%s_%s", ar.Key, channelName)
 }
 
 type Adapter struct{}
@@ -218,6 +252,11 @@ type CreateBindingCommandHandler struct{}
 
 func (CreateBindingCommandHandler) ReturnsBinding(credentials string) {
 	os.Setenv(StdoutContentForBind, credentials)
+}
+
+func (CreateBindingCommandHandler) FailsBecause(exitCode int, stderr string) {
+	response := &AdapterResponse{Key: "BIND", ExitCode: exitCode, Stderr: stderr}
+	response.Set()
 }
 
 func (CreateBindingCommandHandler) FailsWithOperatorError(errString string) {
