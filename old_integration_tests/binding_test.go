@@ -509,33 +509,23 @@ var _ = Describe("binding service instances", func() {
 			})
 
 			It("includes the request ID", func() {
-				Expect(errorResponse.Description).To(MatchRegexp(
-					`broker-request-id: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,
-				))
+				Expect(errorResponse.Description).To(MatchRegexp(`broker-request-id: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`))
 			})
 
 			It("includes the service name", func() {
-				Expect(errorResponse.Description).To(ContainSubstring(
-					fmt.Sprintf("service: %s", serviceName),
-				))
+				Expect(errorResponse.Description).To(ContainSubstring(fmt.Sprintf("service: %s", serviceName)))
 			})
 
 			It("includes a service instance guid", func() {
-				Expect(errorResponse.Description).To(ContainSubstring(
-					fmt.Sprintf("service-instance-guid: %s", instanceID),
-				))
+				Expect(errorResponse.Description).To(ContainSubstring(fmt.Sprintf("service-instance-guid: %s", instanceID)))
 			})
 
 			It("includes the operation type", func() {
-				Expect(errorResponse.Description).To(ContainSubstring(
-					"operation: bind",
-				))
+				Expect(errorResponse.Description).To(ContainSubstring("operation: bind"))
 			})
 
 			It("does NOT include a bosh task ID", func() {
-				Expect(errorResponse.Description).NotTo(ContainSubstring(
-					"task-id:",
-				))
+				Expect(errorResponse.Description).NotTo(ContainSubstring("task-id:"))
 			})
 		})
 	})

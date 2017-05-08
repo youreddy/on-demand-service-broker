@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/on-demand-service-broker/adapterclient"
+	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
 	sdk "github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
 
@@ -58,7 +59,7 @@ var _ = Describe("binding service instances", func() {
 		env.Verify()
 	})
 
-	It("fails when binding already exists", func() {
+	It("reports failure when rejected by adapter", func() {
 		stderrMessage := fmt.Sprintf("binding stderr message-%d", rand.Int())
 		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
 		defer env.Close()
@@ -74,6 +75,22 @@ var _ = Describe("binding service instances", func() {
 		env.Broker.HasLogged(stderrMessage)
 		env.Verify()
 	})
+
+	It("reports failure when bosh is unreachable", func() {
+		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub(), brokerPath.Path())
+		defer env.Close()
+
+		env.Start()
+		env.Bosh.Close()
+
+		response := responseTo(env.Broker.CreateBindingRequest())
+		Expect(response.StatusCode).To(Equal(http.StatusInternalServerError))
+		Expect(bodyOf(response)).To(MatchJSON(errorResponse("Currently unable to bind service instance, please try again later")))
+
+		env.Broker.HasLogged(boshclient.UnreachableMessage)
+		env.Verify()
+	})
+
 })
 
 func responseTo(request *http.Request) *http.Response {

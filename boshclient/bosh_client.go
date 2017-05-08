@@ -72,6 +72,8 @@ const (
 	SemverDirectorVersionType                            = BoshDirectorVersionType("semver")
 	MinimumMajorStemcellDirectorVersionForODB            = 3262
 	MinimumMajorSemverDirectorVersionForLifecycleErrands = 261
+
+	UnreachableMessage = "error reaching bosh director"
 )
 
 type BoshDirectorVersionType string
@@ -275,7 +277,7 @@ func (c *Client) getResultFromBoshCheckingForErrors(request *http.Request, expec
 
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return NewRequestError(fmt.Errorf("error reaching bosh director: %s. Please make sure that properties.<broker-job>.bosh.url is correct and reachable.", err))
+		return NewRequestError(fmt.Errorf("%s: %s. Please make sure that properties.<broker-job>.bosh.url is correct and reachable.", UnreachableMessage, err))
 	}
 	defer response.Body.Close()
 
