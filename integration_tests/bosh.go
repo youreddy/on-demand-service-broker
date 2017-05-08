@@ -65,7 +65,7 @@ func (b *Bosh) Close() {
 	b.Director.Close()
 }
 
-func (b *Bosh) ReturnsDeployment() {
+func (b *Bosh) WillReturnDeployment() {
 	taskID := rand.Int()
 	b.Director.VerifyAndMock(
 		mockbosh.VMsForDeployment(boshDeploymentName).RedirectsToTask(taskID),

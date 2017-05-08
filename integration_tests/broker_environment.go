@@ -124,6 +124,10 @@ func (b *BrokerEnvironment) CreationRequest() *http.Request {
 	return withBasicAuth(bindingReq)
 }
 
+func (b *BrokerEnvironment) HasLogged(expectedString string) {
+	Eventually(b.Session).Should(gbytes.Say(expectedString))
+}
+
 func withBasicAuth(req *http.Request) *http.Request {
 	req.SetBasicAuth(brokerUsername, brokerPassword)
 	return req

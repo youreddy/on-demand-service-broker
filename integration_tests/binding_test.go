@@ -7,6 +7,7 @@
 package integration_tests
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -22,13 +23,14 @@ var (
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
 		withBroker(func(b *BrokerEnvironment) {
-			b.Bosh.ReturnsDeployment()
+			b.Bosh.WillReturnDeployment()
 
 			response := responseTo(b.CreationRequest())
+
 			Expect(response.StatusCode).To(Equal(http.StatusCreated))
 			Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
 
-			// logs the bind request with a request id
+			b.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
 		})
 	})
 })
