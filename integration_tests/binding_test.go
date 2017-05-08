@@ -68,9 +68,8 @@ var _ = Describe("binding service instances", func() {
 		env.Bosh.WillReturnDeployment()
 
 		response := responseTo(env.Broker.CreateBindingRequest())
-
 		Expect(response.StatusCode).To(Equal(http.StatusConflict))
-		Expect(bodyOf(response)).To(MatchJSON(fmt.Sprintf(`{"description": "%s"}`, adapterclient.BindingAlreadyExistsMessage)))
+		Expect(bodyOf(response)).To(MatchJSON(errorResponse(adapterclient.BindingAlreadyExistsMessage)))
 
 		env.Broker.HasLogged(stderrMessage)
 		env.Verify()
@@ -81,6 +80,10 @@ func responseTo(request *http.Request) *http.Response {
 	response, err := http.DefaultClient.Do(request)
 	Expect(err).ToNot(HaveOccurred())
 	return response
+}
+
+func errorResponse(message string) string {
+	return fmt.Sprintf(`{"description": "%s"}`, message)
 }
 
 func withBroker(test func(*BrokerEnvironment)) {

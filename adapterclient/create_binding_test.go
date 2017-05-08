@@ -125,7 +125,7 @@ var _ = Describe("external service adapter", func() {
 		})
 	})
 
-	Context("when the external adapter fails with exit code 49", func() {
+	Context("when the external adapter fails with exit code Binding already exists", func() {
 		BeforeEach(func() {
 			cmdRunner.RunReturns([]byte("stdout"), []byte("stderr"), intPtr(serviceadapter.BindingAlreadyExistsErrorExitCode), nil)
 		})
@@ -141,7 +141,7 @@ var _ = Describe("external service adapter", func() {
 		})
 	})
 
-	Context("when the external adapter fails with exit code 42", func() {
+	Context("when the external adapter fails with exit code GUID not provided", func() {
 		BeforeEach(func() {
 			cmdRunner.RunReturns([]byte("stdout"), []byte("stderr"), intPtr(serviceadapter.AppGuidNotProvidedErrorExitCode), nil)
 		})
@@ -157,7 +157,7 @@ var _ = Describe("external service adapter", func() {
 		})
 	})
 
-	Context("when the external adapter fails with exit code 10", func() {
+	Context("when the external adapter fails with exit code Not implemented", func() {
 		BeforeEach(func() {
 			cmdRunner.RunReturns([]byte("stdout"), []byte("stderr"), intPtr(serviceadapter.NotImplementedExitCode), nil)
 		})
