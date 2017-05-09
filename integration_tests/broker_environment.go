@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	bindingId = "Gjklh45ljkhn"
+	bindingGUIDfromCF = "Gjklh45ljkhn"
 
-	bindingPlanID    = "plan-guid-from-cc"
-	bindingServiceID = "service-guid-from-cc"
-	appGUID          = "app-guid-from-cc"
+	theServiceID  = "the-service-id"
+	basePlanID    = "base-plan-id"
+	appGUIDfromCF = "app-guid-from-cf"
 )
 
 type BrokerEnvironment struct {

@@ -78,3 +78,15 @@ func (b *Bosh) HasNoVMsFor(deploymentName string) {
 		mockbosh.VMsForDeployment(deploymentName).RespondsNotFoundWith(""),
 	)
 }
+
+func (b *Bosh) DeploysWithoutContextId(deploymentName string, taskID int) {
+	b.Director.AppendMocks(
+		mockbosh.Deploy().WithManifest(bosh.BoshManifest{Name: deploymentName}).WithoutContextID().RedirectsToTask(taskID),
+	)
+}
+
+func (b *Bosh) HasNoTasksFor(deploymentName string) {
+	b.Director.AppendMocks(
+		mockbosh.Tasks(deploymentName).RespondsWithNoTasks(),
+	)
+}

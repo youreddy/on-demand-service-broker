@@ -7,21 +7,41 @@
 package integration_tests
 
 import (
+	"fmt"
+	"math/rand"
+	"net/http"
+
 	. "github.com/onsi/ginkgo"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 )
 
 var _ = Describe("updating a service instance", func() {
 	It("returns tracking data for an update operation", func() {
-		When(WithoutCredhub,
-			func(sa *ServiceAdapter, id ServiceInstanceID) {
-				sa.adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(id))
-			},
-			func(env *BrokerEnvironment, id ServiceInstanceID) {
+		updateTaskID := rand.Int()
+		boshDeploysUpdatedManifest := func(env *BrokerEnvironment, id ServiceInstanceID) {
+			deploymentName := broker.DeploymentNameFrom(string(id))
 
-			})
+			env.Bosh.HasNoTasksFor(deploymentName)
+			env.Bosh.HasManifestFor(deploymentName)
+			env.Bosh.DeploysWithoutContextId(deploymentName, updateTaskID)
+		}
+
+		When(updatingServiceInstance).
+			with(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
+			brokerRespondsWith(
+				http.StatusAccepted,
+				fmt.Sprintf(`{"operation":{"OperationType":"update", "BoshTaskID": %d}`, updateTaskID),
+				"foo",
+			)
 	})
 })
+
+var updatingServiceInstance = func(env *BrokerEnvironment, id ServiceInstanceID) *http.Request {
+	return env.Broker.UpdateServiceInstanceRequest(id)
+}
+var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanceID) {
+	sa.adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(id))
+}
 
 func rawManifestWithDeploymentName(id ServiceInstanceID) string {
 	return "name: " + broker.DeploymentNameFrom(string(id))

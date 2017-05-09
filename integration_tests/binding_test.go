@@ -20,19 +20,22 @@ import (
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
-		When(WithoutCredhub, serviceAdapterReturnsBinding, boshHasVMsForServiceInstance).
-			brokerRespondsWith(http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingId))
+
+		When(creatingNewBinding).
+			with(NoCredhub, serviceAdapterReturnsBinding, boshHasVMsForServiceInstance).
+			brokerRespondsWith(http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF))
 	})
 
 	It("sends login details to credhub when credhub configured", func() {
-		mockCredhub := NewCredhub()
+		aCredhub := NewCredhub()
 		boshHasDeploymentWithCredhub := func(env *BrokerEnvironment, id ServiceInstanceID) {
 			boshHasVMsForServiceInstance(env, id)
-			mockCredhub.WillReceiveCredentials(id)
+			aCredhub.WillReceiveCredentials(id)
 		}
 
-		When(mockCredhub, serviceAdapterReturnsBinding, boshHasDeploymentWithCredhub).
-			brokerRespondsWith(http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingId))
+		When(creatingNewBinding).
+			with(aCredhub, serviceAdapterReturnsBinding, boshHasDeploymentWithCredhub).
+			brokerRespondsWith(http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF))
 	})
 
 	It("fails when rejected by adapter", func() {
@@ -41,21 +44,27 @@ var _ = Describe("binding service instances", func() {
 			sa.FailsToBindBecause(sdk.BindingAlreadyExistsErrorExitCode, stderrMessage)
 		}
 
-		When(WithoutCredhub, serviceAdapterFails, boshHasVMsForServiceInstance).
+		When(creatingNewBinding).
+			with(NoCredhub, serviceAdapterFails, boshHasVMsForServiceInstance).
 			brokerRespondsWith(http.StatusConflict, errorBody(adapterclient.BindingAlreadyExistsMessage), stderrMessage)
 	})
 
 	It("fails when bosh is unreachable", func() {
-		When(WithoutCredhub, noServiceAdapter, boshConnectionFails).
+		When(creatingNewBinding).
+			with(NoCredhub, noServiceAdapter, boshConnectionFails).
 			brokerRespondsWith(http.StatusInternalServerError, errorBody("Currently unable to bind service instance, please try again later"), boshclient.UnreachableMessage)
 	})
 
 	It("fails when bosh deployment doesn't exist", func() {
-		When(WithoutCredhub, noServiceAdapter, boshHasNoVMs).
+		When(creatingNewBinding).
+			with(NoCredhub, noServiceAdapter, boshHasNoVMs).
 			brokerRespondsWith(http.StatusNotFound, errorBody("instance does not exist"), "not found") // TODO Where to get service instance ID?
 	})
 })
 
+var creatingNewBinding = func(env *BrokerEnvironment, id ServiceInstanceID) *http.Request {
+	return env.Broker.CreateBindingRequest(id)
+}
 var boshConnectionFails = func(env *BrokerEnvironment, id ServiceInstanceID) { env.Bosh.Close() }
 var boshHasVMsForServiceInstance = func(env *BrokerEnvironment, id ServiceInstanceID) {
 	deploymentName := broker.DeploymentNameFrom(string(id))

@@ -39,7 +39,7 @@ func NewCredhub() *MockCredhub {
 }
 
 func (c *MockCredhub) WillReceiveCredentials(serviceInstanceID ServiceInstanceID) {
-	credhubBindingServiceId := fmt.Sprintf("%s/%s", serviceInstanceID, bindingId)
+	credhubBindingServiceId := fmt.Sprintf("%s/%s", serviceInstanceID, bindingGUIDfromCF)
 
 	c.Credhub.VerifyAndMock(
 		mockcredhub.GetInfo().RespondsWithUAAURL(c.credhubUaa.URL),
@@ -70,4 +70,4 @@ func (n *noop) Configuration() *config.Credhub { return nil }
 func (n *noop) Verify()                        {}
 func (n *noop) Close()                         {}
 
-var WithoutCredhub = new(noop)
+var NoCredhub = new(noop)

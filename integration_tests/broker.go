@@ -27,6 +27,9 @@ const (
 	brokerBasePort = 37890
 	brokerUsername = "broker-username"
 	brokerPassword = "a-very-strong-password"
+
+	spaceGUID        = "space-guid"
+	organizationGUID = "organizationGuid"
 )
 
 type Broker struct {
@@ -67,10 +70,9 @@ func (b *Broker) configurationFile(configuration *config.Config) string {
 
 func (b *Broker) Configuration() config.Broker {
 	return config.Broker{
-		Port:          b.port,
-		Username:      brokerUsername,
-		Password:      brokerPassword,
-		StartUpBanner: false,
+		Port:     b.port,
+		Username: brokerUsername,
+		Password: brokerPassword,
 	}
 }
 
@@ -93,14 +95,38 @@ func (b *Broker) CreateBindingRequest(serviceInstanceID ServiceInstanceID) *http
 		"bind_resource": { "app_guid": "%s"},
 		"parameters": {"baz": "bar"}
 	}`,
-		bindingPlanID, bindingServiceID, appGUID, appGUID,
+		basePlanID, theServiceID, appGUIDfromCF, appGUIDfromCF,
 	)
 
 	bindingReq, err := http.NewRequest("PUT",
-		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s/service_bindings/%s", b.port, serviceInstanceID, bindingId),
+		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s/service_bindings/%s", b.port, serviceInstanceID, bindingGUIDfromCF),
 		bytes.NewReader([]byte(reqJson)))
 	Expect(err).ToNot(HaveOccurred())
 	return withBasicAuth(bindingReq)
+}
+
+func (b *Broker) UpdateServiceInstanceRequest(serviceInstanceID ServiceInstanceID) *http.Request {
+	reqJson := fmt.Sprintf(`{
+		"plan_id" : "%s",
+		"service_id":  "%s",
+		"parameters": {"baz": "bar"},
+		"previous_values": {
+		  "organization_id": "%s",
+			"service_id":      "%s",
+			"plan_id":         "%s",
+			"space_id":        "%s"
+		}
+	}`,
+		basePlanID, theServiceID, organizationGUID, theServiceID, basePlanID, spaceGUID,
+	)
+
+	updateReq, err := http.NewRequest(
+		"PATCH",
+		fmt.Sprintf("http://localhost:%d/v2/service_instances/%s?accepts_incomplete=true", b.port, serviceInstanceID),
+		bytes.NewReader([]byte(reqJson)),
+	)
+	Expect(err).NotTo(HaveOccurred())
+	return withBasicAuth(updateReq)
 }
 
 func withBasicAuth(req *http.Request) *http.Request {

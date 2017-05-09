@@ -18,17 +18,25 @@ var (
 	serviceAdapterPath = NewBinary("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
 )
 
+type Requestifier func(*BrokerEnvironment, ServiceInstanceID) *http.Request
+
 type TestSetup struct {
 	credhub             Credhub
 	serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID)
 	setup               func(*BrokerEnvironment, ServiceInstanceID)
+	requestifier        Requestifier
 }
 
-func When(credhub Credhub, serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID), setup func(*BrokerEnvironment, ServiceInstanceID)) *TestSetup {
+func When(requestifier Requestifier) Requestifier {
+	return requestifier
+}
+
+func (r Requestifier) with(credhub Credhub, serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID), setup func(*BrokerEnvironment, ServiceInstanceID)) *TestSetup {
 	return &TestSetup{
 		credhub:             credhub,
 		serviceAdapterSetup: serviceAdapterSetup,
 		setup:               setup,
+		requestifier:        r,
 	}
 }
 
@@ -49,7 +57,7 @@ func (ts *TestSetup) checkBrokerResponseWhen(
 	env.Start()
 	ts.setup(env, serviceInstanceID)
 
-	response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
+	response := responseTo(ts.requestifier(env, serviceInstanceID))
 	Expect(response.StatusCode).To(Equal(expectedStatus))
 	Expect(bodyOf(response)).To(MatchJSON(expectedResponse))
 	env.Broker.HasLogged(expectedLogMessage)
