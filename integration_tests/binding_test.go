@@ -24,6 +24,24 @@ var (
 	serviceAdapterPath = NewBinary("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
 )
 
+type TestSetup struct {
+	credhub             Credhub
+	serviceAdapterSetup func(*ServiceAdapter)
+	setup               func(*BrokerEnvironment, ServiceInstanceID)
+}
+
+func when(credhub Credhub, serviceAdapterSetup func(*ServiceAdapter), setup func(*BrokerEnvironment, ServiceInstanceID)) *TestSetup {
+	return &TestSetup{
+		credhub:             credhub,
+		serviceAdapterSetup: serviceAdapterSetup,
+		setup:               setup,
+	}
+}
+
+func (ts *TestSetup) brokerRespondsWith(expectedStatus int, expectedResponse string, expectedLogMessage string) {
+	checkBrokerResponseWhen(ts.credhub, ts.serviceAdapterSetup, ts.setup, expectedStatus, expectedResponse, expectedLogMessage)
+}
+
 func checkBrokerResponseWhen(
 	credhub Credhub,
 	serviceAdapterSetup func(*ServiceAdapter),
@@ -50,10 +68,8 @@ func checkBrokerResponseWhen(
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
-		checkBrokerResponseWhen(
-			WithoutCredhub, serviceAdapterReturnsBinding, boshHasDeploymentForServiceInstance,
-			http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingId),
-		)
+		when(WithoutCredhub, serviceAdapterReturnsBinding, boshHasDeploymentForServiceInstance).
+			brokerRespondsWith(http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingId))
 	})
 
 	It("sends login details to credhub when credhub configured", func() {
@@ -63,36 +79,27 @@ var _ = Describe("binding service instances", func() {
 			mockCredhub.WillReceiveCredentials(id)
 		}
 
-		checkBrokerResponseWhen(
-			mockCredhub, serviceAdapterReturnsBinding, boshHasDeploymentWithCredhub,
-			http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingId),
-		)
+		when(mockCredhub, serviceAdapterReturnsBinding, boshHasDeploymentWithCredhub).
+			brokerRespondsWith(http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingId))
 	})
 
 	It("fails when rejected by adapter", func() {
 		stderrMessage := fmt.Sprintf("binding stderr message-%d", rand.Int())
 		serviceAdapterFails := func(sa *ServiceAdapter) { sa.FailsToBindBecause(sdk.BindingAlreadyExistsErrorExitCode, stderrMessage) }
 
-		checkBrokerResponseWhen(
-			WithoutCredhub, serviceAdapterFails, boshHasDeploymentForServiceInstance,
-			http.StatusConflict, errorResponse(adapterclient.BindingAlreadyExistsMessage), stderrMessage,
-		)
+		when(WithoutCredhub, serviceAdapterFails, boshHasDeploymentForServiceInstance).
+			brokerRespondsWith(http.StatusConflict, errorBody(adapterclient.BindingAlreadyExistsMessage), stderrMessage)
 	})
 
 	It("fails when bosh is unreachable", func() {
-		checkBrokerResponseWhen(
-			WithoutCredhub, noServiceAdapter, boshConnectionFails,
-			http.StatusInternalServerError, errorResponse("Currently unable to bind service instance, please try again later"), boshclient.UnreachableMessage,
-		)
+		when(WithoutCredhub, noServiceAdapter, boshConnectionFails).
+			brokerRespondsWith(http.StatusInternalServerError, errorBody("Currently unable to bind service instance, please try again later"), boshclient.UnreachableMessage)
 	})
 
 	It("fails when bosh deployment doesn't exist", func() {
-		checkBrokerResponseWhen(
-			WithoutCredhub, noServiceAdapter, boshHasNoDeployment,
-			http.StatusNotFound, errorResponse("instance does not exist"), "not found", // TODO Where to get service instance ID?
-		)
+		when(WithoutCredhub, noServiceAdapter, boshHasNoDeployment).
+			brokerRespondsWith(http.StatusNotFound, errorBody("instance does not exist"), "not found") // TODO Where to get service instance ID?
 	})
-
 })
 
 var boshConnectionFails = func(env *BrokerEnvironment, id ServiceInstanceID) { env.Bosh.Close() }
@@ -107,7 +114,7 @@ func responseTo(request *http.Request) *http.Response {
 	return response
 }
 
-func errorResponse(message string) string {
+func errorBody(message string) string {
 	return fmt.Sprintf(`{"description": "%s"}`, message)
 }
 
