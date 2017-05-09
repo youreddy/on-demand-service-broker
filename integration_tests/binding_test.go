@@ -24,118 +24,82 @@ var (
 	serviceAdapterPath = NewBinary("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
 )
 
-type Test struct {
-	expectedStatusCode int
-	expectedBody       string
-	expectedLogMessage string
-}
+func checkBrokerResponseWhen(
+	credhub Credhub,
+	serviceAdapterSetup func(*ServiceAdapter),
+	setup func(*BrokerEnvironment, ServiceInstanceID),
+	expectedStatus int,
+	expectedResponse string,
+	expectedLogMessage string,
+) {
+	serviceInstanceID := AServiceInstanceID()
+	env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), credhub, brokerPath.Path())
+	defer env.Close()
 
-func NewTest(expectedStatusCode int, expectedBody, expectedLogMessage string) *Test {
-	return &Test{
-		expectedStatusCode: expectedStatusCode,
-		expectedBody:       expectedBody,
-		expectedLogMessage: expectedLogMessage,
-	}
+	serviceAdapterSetup(env.ServiceAdapter)
+	env.Start()
+	setup(env, serviceInstanceID)
+
+	response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
+	Expect(response.StatusCode).To(Equal(expectedStatus))
+	Expect(bodyOf(response)).To(MatchJSON(expectedResponse))
+	env.Broker.HasLogged(expectedLogMessage)
+
+	env.Verify()
 }
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
-		serviceInstanceID := AServiceInstanceID()
-
-		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub, brokerPath.Path())
-		defer env.Close()
-
-		env.ServiceAdapter.ReturnsBinding()
-
-		env.Start()
-
-		env.Bosh.HasDeploymentFor(serviceInstanceID)
-
-		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
-		Expect(response.StatusCode).To(Equal(http.StatusCreated))
-		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
-		env.Broker.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
-
-		env.Verify()
+		checkBrokerResponseWhen(
+			WithoutCredhub, serviceAdapterReturnsBinding, boshHasDeploymentForServiceInstance,
+			http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingId),
+		)
 	})
 
 	It("sends login details to credhub when credhub configured", func() {
-		serviceInstanceID := AServiceInstanceID()
 		mockCredhub := NewCredhub()
-		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), mockCredhub, brokerPath.Path())
-		defer env.Close()
+		boshHasDeploymentWithCredhub := func(env *BrokerEnvironment, id ServiceInstanceID) {
+			boshHasDeploymentForServiceInstance(env, id)
+			mockCredhub.WillReceiveCredentials(id)
+		}
 
-		env.ServiceAdapter.ReturnsBinding()
-
-		env.Start()
-
-		env.Bosh.HasDeploymentFor(serviceInstanceID)
-		mockCredhub.WillReceiveCredentials(serviceInstanceID)
-
-		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
-		Expect(response.StatusCode).To(Equal(http.StatusCreated))
-		Expect(bodyOf(response)).To(MatchJSON(BindingResponse))
-		env.Broker.HasLogged(fmt.Sprintf("create binding with ID %s", bindingId))
-
-		env.Verify()
+		checkBrokerResponseWhen(
+			mockCredhub, serviceAdapterReturnsBinding, boshHasDeploymentWithCredhub,
+			http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingId),
+		)
 	})
 
 	It("fails when rejected by adapter", func() {
 		stderrMessage := fmt.Sprintf("binding stderr message-%d", rand.Int())
+		serviceAdapterFails := func(sa *ServiceAdapter) { sa.FailsToBindBecause(sdk.BindingAlreadyExistsErrorExitCode, stderrMessage) }
 
-		serviceInstanceID := AServiceInstanceID()
-		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub, brokerPath.Path())
-		defer env.Close()
-
-		env.ServiceAdapter.FailsToBindBecause(sdk.BindingAlreadyExistsErrorExitCode, stderrMessage)
-
-		env.Start()
-
-		env.Bosh.HasDeploymentFor(serviceInstanceID)
-
-		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
-		Expect(response.StatusCode).To(Equal(http.StatusConflict))
-		Expect(bodyOf(response)).To(MatchJSON(errorResponse(adapterclient.BindingAlreadyExistsMessage)))
-		env.Broker.HasLogged(stderrMessage)
-
-		env.Verify()
+		checkBrokerResponseWhen(
+			WithoutCredhub, serviceAdapterFails, boshHasDeploymentForServiceInstance,
+			http.StatusConflict, errorResponse(adapterclient.BindingAlreadyExistsMessage), stderrMessage,
+		)
 	})
 
 	It("fails when bosh is unreachable", func() {
-		serviceInstanceID := AServiceInstanceID()
-		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub, brokerPath.Path())
-		defer env.Close()
-
-		env.Start()
-
-		env.Bosh.Close()
-
-		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
-		Expect(response.StatusCode).To(Equal(http.StatusInternalServerError))
-		Expect(bodyOf(response)).To(MatchJSON(errorResponse("Currently unable to bind service instance, please try again later")))
-		env.Broker.HasLogged(boshclient.UnreachableMessage)
-
-		env.Verify()
+		checkBrokerResponseWhen(
+			WithoutCredhub, noServiceAdapter, boshConnectionFails,
+			http.StatusInternalServerError, errorResponse("Currently unable to bind service instance, please try again later"), boshclient.UnreachableMessage,
+		)
 	})
 
 	It("fails when bosh deployment doesn't exist", func() {
-		serviceInstanceID := AServiceInstanceID()
-		env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), NoopCredhub, brokerPath.Path())
-		defer env.Close()
-
-		env.Start()
-
-		env.Bosh.HasNoDeploymentFor(serviceInstanceID)
-
-		response := responseTo(env.Broker.CreateBindingRequest(serviceInstanceID))
-		Expect(response.StatusCode).To(Equal(http.StatusNotFound))
-		Expect(bodyOf(response)).To(MatchJSON(errorResponse("instance does not exist")))
-		env.Broker.HasLogged(fmt.Sprintf("binding: instance %s, not found", serviceInstanceID))
-
-		env.Verify()
+		checkBrokerResponseWhen(
+			WithoutCredhub, noServiceAdapter, boshHasNoDeployment,
+			http.StatusNotFound, errorResponse("instance does not exist"), "not found", // TODO Where to get service instance ID?
+		)
 	})
 
 })
+
+var boshConnectionFails = func(env *BrokerEnvironment, id ServiceInstanceID) { env.Bosh.Close() }
+var boshHasDeploymentForServiceInstance = func(env *BrokerEnvironment, id ServiceInstanceID) { env.Bosh.HasDeploymentFor(id) }
+var boshHasNoDeployment = func(env *BrokerEnvironment, id ServiceInstanceID) { env.Bosh.HasNoDeploymentFor(id) }
+var serviceAdapterReturnsBinding = func(sa *ServiceAdapter) { sa.ReturnsBinding() }
+var noServiceAdapter = func(sa *ServiceAdapter) {}
 
 func responseTo(request *http.Request) *http.Response {
 	response, err := http.DefaultClient.Do(request)

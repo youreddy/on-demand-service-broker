@@ -70,4 +70,4 @@ func (n *noop) Configuration() *config.Credhub { return nil }
 func (n *noop) Verify()                        {}
 func (n *noop) Close()                         {}
 
-var NoopCredhub = new(noop)
+var WithoutCredhub = new(noop)
