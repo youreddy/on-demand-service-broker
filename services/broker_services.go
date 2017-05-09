@@ -4,77 +4,71 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 // Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-package brokerclient
+package services
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/pivotal-cf/brokerapi"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
+	"github.com/pivotal-cf/on-demand-service-broker/mgmtapi"
 )
 
-type HTTPClient interface {
-	Do(request *http.Request) (*http.Response, error)
+//go:generate counterfeiter -o fakes/fake_client.go . Client
+type Client interface {
+	Get(path string, query map[string]string) (*http.Response, error)
+	Patch(path string) (*http.Response, error)
 }
 
 type BrokerServices struct {
-	username  string
-	password  string
-	url       string
-	client    HTTPClient
+	client    Client
 	converter ResponseConverter
 }
 
-func NewBrokerServices(username, password, url string, client HTTPClient) BrokerServices {
-	return BrokerServices{
-		username:  username,
-		password:  password,
-		url:       url,
+func NewBrokerServices(client Client) *BrokerServices {
+	return &BrokerServices{
 		client:    client,
 		converter: ResponseConverter{},
 	}
 }
 
-func (b BrokerServices) Instances() ([]string, error) {
-	response, err := b.responseTo("GET", "/mgmt/service_instances")
+func (b *BrokerServices) Instances() ([]string, error) {
+	response, err := b.client.Get("/mgmt/service_instances", nil)
 	if err != nil {
 		return nil, err
 	}
 	return b.converter.ListInstancesFrom(response)
 }
 
-func (b BrokerServices) UpgradeInstance(instanceGUID string) (UpgradeOperation, error) {
-	response, err := b.responseTo("PATCH", fmt.Sprintf("/mgmt/service_instances/%s", instanceGUID))
+func (b *BrokerServices) UpgradeInstance(instanceGUID string) (UpgradeOperation, error) {
+	response, err := b.client.Patch(fmt.Sprintf("/mgmt/service_instances/%s", instanceGUID))
 	if err != nil {
 		return UpgradeOperation{}, err
 	}
 	return b.converter.UpgradeOperationFrom(response)
 }
 
-func (b BrokerServices) LastOperation(instanceGUID string, operationData broker.OperationData) (brokerapi.LastOperation, error) {
+func (b *BrokerServices) LastOperation(instanceGUID string, operationData broker.OperationData) (brokerapi.LastOperation, error) {
 	asJSON, err := json.Marshal(operationData)
 	if err != nil {
 		return brokerapi.LastOperation{}, err
 	}
 
-	operationQueryStr := url.QueryEscape(string(asJSON))
-	response, err := b.responseTo("GET", fmt.Sprintf("/v2/service_instances/%s/last_operation?operation=%s", instanceGUID, operationQueryStr))
+	query := map[string]string{"operation": string(asJSON)}
+	response, err := b.client.Get(fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceGUID), query)
 	if err != nil {
 		return brokerapi.LastOperation{}, err
 	}
 	return b.converter.LastOperationFrom(response)
 }
 
-func (b BrokerServices) responseTo(verb, path string) (*http.Response, error) {
-	request, err := http.NewRequest(verb, fmt.Sprintf("%s%s", b.url, path), nil)
+func (b *BrokerServices) OrphanDeployments() ([]mgmtapi.Deployment, error) {
+	response, err := b.client.Get("/mgmt/orphan_deployments", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	request.SetBasicAuth(b.username, b.password)
-
-	return b.client.Do(request)
+	return b.converter.OrphanDeploymentsFrom(response)
 }

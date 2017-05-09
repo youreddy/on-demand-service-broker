@@ -1,4 +1,4 @@
-package brokerclient_test
+package services_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -9,5 +9,5 @@ import (
 
 func TestBrokerclient(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Broker Client Suite")
+	RunSpecs(t, "Broker Services Suite")
 }
