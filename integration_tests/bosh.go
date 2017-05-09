@@ -10,7 +10,6 @@ import (
 	"math/rand"
 
 	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
-	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/mockbosh"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
@@ -58,20 +57,24 @@ func (b *Bosh) Close() {
 	b.Director.Close()
 }
 
-func (b *Bosh) HasDeploymentFor(id ServiceInstanceID) {
-	boshDeploymentName := broker.DeploymentNameFrom(string(id))
-	taskID := rand.Int()
-
-	b.Director.VerifyAndMock(
-		mockbosh.VMsForDeployment(boshDeploymentName).RedirectsToTask(taskID),
-		mockbosh.Task(taskID).RespondsWithTaskContainingState(boshclient.BoshTaskDone),
-		mockbosh.TaskOutput(taskID).RespondsWithBody(boshVMDescription),
-		mockbosh.GetDeployment(boshDeploymentName).RespondsWithManifest(&bosh.BoshManifest{Name: boshDeploymentName}),
+func (b *Bosh) HasManifestFor(deploymentName string) {
+	b.Director.AppendMocks(
+		mockbosh.GetDeployment(deploymentName).RespondsWithManifest(&bosh.BoshManifest{Name: deploymentName}),
 	)
 }
 
-func (b *Bosh) HasNoDeploymentFor(id ServiceInstanceID) {
-	b.Director.VerifyAndMock(
-		mockbosh.VMsForDeployment(broker.DeploymentNameFrom(string(id))).RespondsNotFoundWith(""),
+func (b *Bosh) HasVMsFor(deploymentName string) {
+	taskID := rand.Int()
+
+	b.Director.AppendMocks(
+		mockbosh.VMsForDeployment(deploymentName).RedirectsToTask(taskID),
+		mockbosh.Task(taskID).RespondsWithTaskContainingState(boshclient.BoshTaskDone),
+		mockbosh.TaskOutput(taskID).RespondsWithBody(boshVMDescription),
+	)
+}
+
+func (b *Bosh) HasNoVMsFor(deploymentName string) {
+	b.Director.AppendMocks(
+		mockbosh.VMsForDeployment(deploymentName).RespondsNotFoundWith(""),
 	)
 }

@@ -8,10 +8,21 @@ package integration_tests
 
 import (
 	. "github.com/onsi/ginkgo"
+	"github.com/pivotal-cf/on-demand-service-broker/broker"
 )
+
 var _ = Describe("updating a service instance", func() {
 	It("returns tracking data for an update operation", func() {
+		When(WithoutCredhub,
+			func(sa *ServiceAdapter, id ServiceInstanceID) {
+				sa.adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(id))
+			},
+			func(env *BrokerEnvironment, id ServiceInstanceID) {
 
+			})
 	})
 })
 
+func rawManifestWithDeploymentName(id ServiceInstanceID) string {
+	return "name: " + broker.DeploymentNameFrom(string(id))
+}

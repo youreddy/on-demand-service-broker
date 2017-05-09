@@ -14,19 +14,20 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/pivotal-cf/on-demand-service-broker/adapterclient"
 	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
+	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	sdk "github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
-		When(WithoutCredhub, serviceAdapterReturnsBinding, boshHasDeploymentForServiceInstance).
+		When(WithoutCredhub, serviceAdapterReturnsBinding, boshHasVMsForServiceInstance).
 			brokerRespondsWith(http.StatusCreated, BindingResponse, fmt.Sprintf("create binding with ID %s", bindingId))
 	})
 
 	It("sends login details to credhub when credhub configured", func() {
 		mockCredhub := NewCredhub()
 		boshHasDeploymentWithCredhub := func(env *BrokerEnvironment, id ServiceInstanceID) {
-			boshHasDeploymentForServiceInstance(env, id)
+			boshHasVMsForServiceInstance(env, id)
 			mockCredhub.WillReceiveCredentials(id)
 		}
 
@@ -36,9 +37,11 @@ var _ = Describe("binding service instances", func() {
 
 	It("fails when rejected by adapter", func() {
 		stderrMessage := fmt.Sprintf("binding stderr message-%d", rand.Int())
-		serviceAdapterFails := func(sa *ServiceAdapter) { sa.FailsToBindBecause(sdk.BindingAlreadyExistsErrorExitCode, stderrMessage) }
+		serviceAdapterFails := func(sa *ServiceAdapter, id ServiceInstanceID) {
+			sa.FailsToBindBecause(sdk.BindingAlreadyExistsErrorExitCode, stderrMessage)
+		}
 
-		When(WithoutCredhub, serviceAdapterFails, boshHasDeploymentForServiceInstance).
+		When(WithoutCredhub, serviceAdapterFails, boshHasVMsForServiceInstance).
 			brokerRespondsWith(http.StatusConflict, errorBody(adapterclient.BindingAlreadyExistsMessage), stderrMessage)
 	})
 
@@ -48,16 +51,22 @@ var _ = Describe("binding service instances", func() {
 	})
 
 	It("fails when bosh deployment doesn't exist", func() {
-		When(WithoutCredhub, noServiceAdapter, boshHasNoDeployment).
+		When(WithoutCredhub, noServiceAdapter, boshHasNoVMs).
 			brokerRespondsWith(http.StatusNotFound, errorBody("instance does not exist"), "not found") // TODO Where to get service instance ID?
 	})
 })
 
 var boshConnectionFails = func(env *BrokerEnvironment, id ServiceInstanceID) { env.Bosh.Close() }
-var boshHasDeploymentForServiceInstance = func(env *BrokerEnvironment, id ServiceInstanceID) { env.Bosh.HasDeploymentFor(id) }
-var boshHasNoDeployment = func(env *BrokerEnvironment, id ServiceInstanceID) { env.Bosh.HasNoDeploymentFor(id) }
-var serviceAdapterReturnsBinding = func(sa *ServiceAdapter) { sa.ReturnsBinding() }
-var noServiceAdapter = func(sa *ServiceAdapter) {}
+var boshHasVMsForServiceInstance = func(env *BrokerEnvironment, id ServiceInstanceID) {
+	deploymentName := broker.DeploymentNameFrom(string(id))
+	env.Bosh.HasVMsFor(deploymentName)
+	env.Bosh.HasManifestFor(deploymentName)
+}
+var boshHasNoVMs = func(env *BrokerEnvironment, id ServiceInstanceID) {
+	env.Bosh.HasNoVMsFor(broker.DeploymentNameFrom(string(id)))
+}
+var serviceAdapterReturnsBinding = func(sa *ServiceAdapter, id ServiceInstanceID) { sa.ReturnsBinding() }
+var noServiceAdapter = func(sa *ServiceAdapter, id ServiceInstanceID) {}
 
 func errorBody(message string) string {
 	return fmt.Sprintf(`{"description": "%s"}`, message)

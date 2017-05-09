@@ -20,11 +20,11 @@ var (
 
 type TestSetup struct {
 	credhub             Credhub
-	serviceAdapterSetup func(*ServiceAdapter)
+	serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID)
 	setup               func(*BrokerEnvironment, ServiceInstanceID)
 }
 
-func When(credhub Credhub, serviceAdapterSetup func(*ServiceAdapter), setup func(*BrokerEnvironment, ServiceInstanceID)) *TestSetup {
+func When(credhub Credhub, serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID), setup func(*BrokerEnvironment, ServiceInstanceID)) *TestSetup {
 	return &TestSetup{
 		credhub:             credhub,
 		serviceAdapterSetup: serviceAdapterSetup,
@@ -45,7 +45,7 @@ func (ts *TestSetup) checkBrokerResponseWhen(
 	env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), ts.credhub, brokerPath.Path())
 	defer env.Close()
 
-	ts.serviceAdapterSetup(env.ServiceAdapter)
+	ts.serviceAdapterSetup(env.ServiceAdapter, serviceInstanceID)
 	env.Start()
 	ts.setup(env, serviceInstanceID)
 
