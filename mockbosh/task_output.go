@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
+	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
 )
 
@@ -30,7 +30,7 @@ func (t *taskOutputMock) RespondsWithBody(body string) *mockhttp.Handler {
 	return t.RespondsOKWith(body)
 }
 
-func (t *taskOutputMock) RespondsWithVMsOutput(vms []boshclient.BoshVMsOutput) *mockhttp.Handler {
+func (t *taskOutputMock) RespondsWithVMsOutput(vms []boshdirector.BoshVMsOutput) *mockhttp.Handler {
 	output := bytes.NewBuffer([]byte{})
 	encoder := json.NewEncoder(output)
 
@@ -41,7 +41,7 @@ func (t *taskOutputMock) RespondsWithVMsOutput(vms []boshclient.BoshVMsOutput) *
 	return t.RespondsOKWith(string(output.Bytes()))
 }
 
-func (t *taskOutputMock) RespondsWithTaskOutput(taskOutput []boshclient.BoshTaskOutput) *mockhttp.Handler {
+func (t *taskOutputMock) RespondsWithTaskOutput(taskOutput []boshdirector.BoshTaskOutput) *mockhttp.Handler {
 	output := bytes.NewBuffer([]byte{})
 	encoder := json.NewEncoder(output)
 

@@ -15,9 +15,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/brokerapi"
-	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
+	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
-	"github.com/pivotal-cf/on-demand-service-broker/cloud_foundry_client"
+	"github.com/pivotal-cf/on-demand-service-broker/cf"
 )
 
 var _ = Describe("deprovisioning instances", func() {
@@ -34,7 +34,7 @@ var _ = Describe("deprovisioning instances", func() {
 	BeforeEach(func() {
 		asyncAllowed = true
 		boshClient.GetDeploymentReturns([]byte(`manifest: true`), true, nil)
-		cfClient.GetInstanceStateReturns(cloud_foundry_client.InstanceState{
+		cfClient.GetInstanceStateReturns(cf.InstanceState{
 			PlanID:              existingPlanID,
 			OperationInProgress: false,
 		}, nil)
@@ -93,7 +93,7 @@ var _ = Describe("deprovisioning instances", func() {
 
 	Context("when getting the deployment returns a request error", func() {
 		BeforeEach(func() {
-			boshClient.GetDeploymentReturns(nil, false, boshclient.NewRequestError(errors.New("problem fetching manifest")))
+			boshClient.GetDeploymentReturns(nil, false, boshdirector.NewRequestError(errors.New("problem fetching manifest")))
 		})
 
 		It("returns an error", func() {
@@ -146,7 +146,7 @@ var _ = Describe("deprovisioning instances", func() {
 
 		BeforeEach(func() {
 			instanceID = "an-instance-with-pre-delete-errand"
-			cfClient.GetInstanceStateReturns(cloud_foundry_client.InstanceState{
+			cfClient.GetInstanceStateReturns(cf.InstanceState{
 				PlanID:              preDeleteErrandPlanID,
 				OperationInProgress: false,
 			}, nil)
@@ -199,7 +199,7 @@ var _ = Describe("deprovisioning instances", func() {
 		Context("when the cf client returns an error from get instance state", func() {
 			BeforeEach(func() {
 				cfClient.GetInstanceStateReturns(
-					cloud_foundry_client.InstanceState{},
+					cf.InstanceState{},
 					errors.New("service instance error"),
 				)
 			})
@@ -271,7 +271,7 @@ var _ = Describe("deprovisioning instances", func() {
 
 		Context("with a bosh request error", func() {
 			BeforeEach(func() {
-				boshClient.DeleteDeploymentReturns(0, boshclient.NewRequestError(
+				boshClient.DeleteDeploymentReturns(0, boshdirector.NewRequestError(
 					fmt.Errorf("error deleting instance: network timeout"),
 				))
 			})
@@ -287,7 +287,7 @@ var _ = Describe("deprovisioning instances", func() {
 	})
 
 	Context("when a bosh task is in flight for the deployment", func() {
-		incompleteTasks := boshclient.BoshTasks{{ID: 1337, State: boshclient.BoshTaskProcessing}}
+		incompleteTasks := boshdirector.BoshTasks{{ID: 1337, State: boshdirector.TaskProcessing}}
 		BeforeEach(func() {
 			boshClient.GetTasksReturns(incompleteTasks, nil)
 		})
@@ -304,8 +304,8 @@ var _ = Describe("deprovisioning instances", func() {
 	Context("when getting bosh tasks returns a request error", func() {
 		BeforeEach(func() {
 			boshClient.GetTasksReturns(
-				boshclient.BoshTasks{},
-				boshclient.NewRequestError(errors.New("problem fetching tasks")),
+				boshdirector.BoshTasks{},
+				boshdirector.NewRequestError(errors.New("problem fetching tasks")),
 			)
 		})
 
@@ -322,7 +322,7 @@ var _ = Describe("deprovisioning instances", func() {
 
 	Context("when getting bosh tasks returns a non-request error", func() {
 		BeforeEach(func() {
-			boshClient.GetTasksReturns(boshclient.BoshTasks{}, errors.New("oops"))
+			boshClient.GetTasksReturns(boshdirector.BoshTasks{}, errors.New("oops"))
 		})
 
 		It("returns an error", func() {

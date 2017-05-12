@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
-	"github.com/pivotal-cf/on-demand-service-broker/cloud_foundry_client"
+	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
+	"github.com/pivotal-cf/on-demand-service-broker/cf"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/credstore"
 	"github.com/pivotal-cf/on-demand-service-broker/loggerfactory"
@@ -109,14 +109,14 @@ type ServiceAdapterClient interface {
 
 //go:generate counterfeiter -o fakes/fake_bosh_client.go . BoshClient
 type BoshClient interface {
-	GetTask(taskID int, logger *log.Logger) (boshclient.BoshTask, error)
-	GetTasks(deploymentName string, logger *log.Logger) (boshclient.BoshTasks, error)
-	GetNormalisedTasksByContext(deploymentName, contextID string, logger *log.Logger) (boshclient.BoshTasks, error)
+	GetTask(taskID int, logger *log.Logger) (boshdirector.BoshTask, error)
+	GetTasks(deploymentName string, logger *log.Logger) (boshdirector.BoshTasks, error)
+	GetNormalisedTasksByContext(deploymentName, contextID string, logger *log.Logger) (boshdirector.BoshTasks, error)
 	VMs(deploymentName string, logger *log.Logger) (bosh.BoshVMs, error)
 	GetDeployment(name string, logger *log.Logger) ([]byte, bool, error)
-	GetDeployments(logger *log.Logger) ([]boshclient.BoshDeployment, error)
+	GetDeployments(logger *log.Logger) ([]boshdirector.Deployment, error)
 	DeleteDeployment(name, contextID string, logger *log.Logger) (int, error)
-	GetDirectorVersion(logger *log.Logger) (boshclient.BoshDirectorVersion, error)
+	GetDirectorVersion(logger *log.Logger) (boshdirector.Version, error)
 	RunErrand(deploymentName, errandName, contextID string, logger *log.Logger) (int, error)
 }
 
@@ -125,7 +125,7 @@ type CloudFoundryClient interface {
 	GetAPIVersion(logger *log.Logger) (string, error)
 	CountInstancesOfPlan(serviceOfferingID, planID string, logger *log.Logger) (int, error)
 	CountInstancesOfServiceOffering(serviceOfferingID string, logger *log.Logger) (instanceCountByPlanID map[string]int, err error)
-	GetInstanceState(serviceInstanceGUID string, logger *log.Logger) (cloud_foundry_client.InstanceState, error)
+	GetInstanceState(serviceInstanceGUID string, logger *log.Logger) (cf.InstanceState, error)
 	GetInstancesOfServiceOffering(serviceOfferingID string, logger *log.Logger) ([]string, error)
 }
 

@@ -14,8 +14,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/brokerapi"
-	"github.com/pivotal-cf/on-demand-service-broker/adapterclient"
-	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
+	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
+	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 )
@@ -125,7 +125,7 @@ var _ = Describe("Unbind", func() {
 
 	Context("when bosh client returns a request error", func() {
 		BeforeEach(func() {
-			boshClient.VMsReturns(nil, boshclient.NewRequestError(errors.New("bosh down.")))
+			boshClient.VMsReturns(nil, boshdirector.NewRequestError(errors.New("bosh down.")))
 		})
 
 		It("logs the error", func() {
@@ -149,7 +149,7 @@ var _ = Describe("Unbind", func() {
 
 	Context("when cannot find the instance", func() {
 		BeforeEach(func() {
-			boshClient.VMsReturns(bosh.BoshVMs{}, boshclient.DeploymentNotFoundError{})
+			boshClient.VMsReturns(bosh.BoshVMs{}, boshdirector.DeploymentNotFoundError{})
 		})
 
 		It("returns an error", func() {
@@ -207,7 +207,7 @@ var _ = Describe("Unbind", func() {
 		})
 
 		Context("with an error message for the user", func() {
-			var err = adapterclient.NewUnknownFailureError("it failed, but all is not lost dear user")
+			var err = serviceadapter.NewUnknownFailureError("it failed, but all is not lost dear user")
 
 			BeforeEach(func() {
 				serviceAdapter.DeleteBindingReturns(err)
@@ -221,7 +221,7 @@ var _ = Describe("Unbind", func() {
 
 	Context("when the service adapter cannot find the binding", func() {
 		BeforeEach(func() {
-			serviceAdapter.DeleteBindingReturns(adapterclient.BindingNotFoundError{})
+			serviceAdapter.DeleteBindingReturns(serviceadapter.BindingNotFoundError{})
 		})
 
 		It("returns a binding not found error", func() {

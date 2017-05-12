@@ -17,16 +17,15 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pivotal-cf/brokerapi"
 	apiauth "github.com/pivotal-cf/brokerapi/auth"
-	"github.com/pivotal-cf/on-demand-service-broker/adapterclient"
 	"github.com/pivotal-cf/on-demand-service-broker/authorizationheader"
-	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
+	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
-	"github.com/pivotal-cf/on-demand-service-broker/cloud_foundry_client"
+	"github.com/pivotal-cf/on-demand-service-broker/cf"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/credstore"
-	"github.com/pivotal-cf/on-demand-service-broker/features"
 	"github.com/pivotal-cf/on-demand-service-broker/loggerfactory"
 	"github.com/pivotal-cf/on-demand-service-broker/mgmtapi"
+	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/task"
 	"github.com/urfave/negroni"
 )
@@ -53,7 +52,7 @@ func main() {
 
 func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfactory.LoggerFactory) {
 	var (
-		boshAuthenticator boshclient.AuthHeaderBuilder
+		boshAuthenticator boshdirector.AuthHeaderBuilder
 		err               error
 	)
 
@@ -76,7 +75,7 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 		}
 	}
 
-	boshClient, err := boshclient.New(conf.Bosh.URL, boshAuthenticator, conf.Broker.DisableSSLCertVerification, []byte(conf.Bosh.TrustedCert))
+	boshClient, err := boshdirector.New(conf.Bosh.URL, boshAuthenticator, conf.Broker.DisableSSLCertVerification, []byte(conf.Bosh.TrustedCert))
 	if err != nil {
 		logger.Fatalf("error creating bosh client: %s", err)
 	}
@@ -86,7 +85,7 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 		logger.Fatalf("error creating CF authorization header builder: %s", err)
 	}
 
-	cfClient, err := cloud_foundry_client.New(
+	cfClient, err := cf.New(
 		conf.CF.URL,
 		cfAuthenticator,
 		[]byte(conf.CF.TrustedCert),
@@ -96,9 +95,9 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 		logger.Fatalf("error creating Cloud Foundry client: %s", err)
 	}
 
-	serviceAdapter := &adapterclient.Adapter{
+	serviceAdapter := &serviceadapter.Client{
 		ExternalBinPath: conf.ServiceAdapter.Path,
-		CommandRunner:   adapterclient.NewCommandRunner(),
+		CommandRunner:   serviceadapter.NewCommandRunner(),
 	}
 
 	manifestGenerator := task.NewManifestGenerator(
@@ -108,11 +107,10 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 		conf.ServiceDeployment.Releases,
 	)
 
-	featureFlags := features.New(conf.Features)
 	deploymentManager := task.NewDeployer(boshClient, manifestGenerator)
 	credStore := credentialStore(conf.Credhub, conf.Broker.DisableSSLCertVerification)
 
-	onDemandBroker, err := broker.New(boshClient, cfClient, credStore, serviceAdapter, deploymentManager, conf.ServiceCatalog, loggerFactory, featureFlags)
+	onDemandBroker, err := broker.New(boshClient, cfClient, credStore, serviceAdapter, deploymentManager, conf.ServiceCatalog, loggerFactory, conf.Features)
 	if err != nil {
 		logger.Fatalf("error starting broker: %s", err)
 	}

@@ -14,8 +14,8 @@ import (
 
 	"github.com/pborman/uuid"
 	"github.com/pivotal-cf/brokerapi"
-	"github.com/pivotal-cf/on-demand-service-broker/adapterclient"
-	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
+	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
+	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 	"github.com/pivotal-cf/on-demand-service-broker/brokercontext"
 )
 
@@ -86,7 +86,7 @@ func (b *Broker) provisionInstance(ctx context.Context, instanceID string, planI
 
 	_, found, err := b.boshClient.GetDeployment(DeploymentNameFrom(instanceID), logger)
 	switch err := err.(type) {
-	case boshclient.RequestError:
+	case boshdirector.RequestError:
 		return errs(NewBoshRequestError("create", fmt.Errorf("could not get manifest: %s", err)))
 	case error:
 		return errs(NewGenericError(ctx, fmt.Errorf("could not get manifest: %s", err)))
@@ -132,11 +132,11 @@ func (b *Broker) provisionInstance(ctx context.Context, instanceID string, planI
 
 	boshTaskID, manifest, err := b.deployer.Create(DeploymentNameFrom(instanceID), plan.ID, requestParams, boshContextID, logger)
 	switch err := err.(type) {
-	case boshclient.RequestError:
+	case boshdirector.RequestError:
 		return errs(NewBoshRequestError("create", err))
 	case DisplayableError:
 		return errs(err)
-	case adapterclient.UnknownFailureError:
+	case serviceadapter.UnknownFailureError:
 		return errs(adapterToAPIError(ctx, err))
 	case error:
 		return errs(NewGenericError(ctx, err))
@@ -159,7 +159,7 @@ func (b *Broker) provisionInstance(ctx context.Context, instanceID string, planI
 	}
 
 	//Dashboard url optional
-	if _, ok := err.(adapterclient.NotImplementedError); ok {
+	if _, ok := err.(serviceadapter.NotImplementedError); ok {
 		return operationData, dashboardUrl, nil
 	}
 
