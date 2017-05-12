@@ -15,8 +15,8 @@ import (
 
 	"github.com/pborman/uuid"
 	"github.com/pivotal-cf/brokerapi"
-	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/brokercontext"
+	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/task"
 )
 
@@ -44,9 +44,9 @@ func (b *Broker) Update(
 
 	plan, found := b.serviceOffering.FindPlanByID(details.PlanID)
 	if !found {
-		message := fmt.Sprintf("Plan %s not found", details.PlanID)
-		logger.Println(message)
-		return brokerapi.UpdateServiceSpec{IsAsync: true}, errors.New(message)
+		err := fmt.Errorf("Plan %s not found", details.PlanID)
+		logger.Println(err)
+		return brokerapi.UpdateServiceSpec{IsAsync: true}, err
 	}
 
 	if details.PreviousValues.PlanID != plan.ID {
