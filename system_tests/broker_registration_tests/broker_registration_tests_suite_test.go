@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 	"github.com/pivotal-cf/on-demand-service-broker/system_tests/bosh_helpers"
 	"github.com/pivotal-cf/on-demand-service-broker/system_tests/cf_helpers"
 )
@@ -38,7 +39,7 @@ var _ = BeforeSuite(func() {
 	boshUsername := envMustHave("BOSH_USERNAME")
 	boshPassword := envMustHave("BOSH_PASSWORD")
 	boshCACert := os.Getenv("BOSH_CA_CERT_FILE")
-	disableTLSVerification := boshCACert == ""
+	tlsCertVerification := tlsVerification(boshCACert)
 	uaaURL := os.Getenv("UAA_URL")
 
 	cfAdminPassword = envMustHave("CF_PASSWORD")
@@ -46,13 +47,21 @@ var _ = BeforeSuite(func() {
 	cfSpaceDeveloperPassword = envMustHave("CF_SPACE_DEVELOPER_PASSWORD")
 
 	if uaaURL == "" {
-		boshClient = bosh_helpers.NewBasicAuth(boshURL, boshUsername, boshPassword, boshCACert, disableTLSVerification)
+		boshClient = bosh_helpers.NewBasicAuth(boshURL, boshUsername, boshPassword, boshCACert, tlsCertVerification)
 	} else {
 		boshClient = bosh_helpers.New(boshURL, uaaURL, boshUsername, boshPassword, boshCACert)
 	}
 	SetDefaultEventuallyTimeout(cf_helpers.CfTimeout)
 	cfCreateSpaceDevUser()
 })
+
+func tlsVerification(caCert string) network.TLSCertVerification {
+	if caCert == "" {
+		return network.IgnoreTLSCert
+	} else {
+		return network.VerifyTLSCert
+	}
+}
 
 var _ = AfterSuite(func() {
 	cfLogInAsAdmin()

@@ -18,6 +18,7 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/mockuaa"
 	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 	"gopkg.in/yaml.v2"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 var _ = Describe("Config", func() {
@@ -44,11 +45,11 @@ var _ = Describe("Config", func() {
 				instanceLimit := 1
 				expected := config.Config{
 					Broker: config.Broker{
-						Port:                       8080,
-						Username:                   "username",
-						Password:                   "password",
-						DisableSSLCertVerification: true,
-						StartUpBanner:              false,
+						Port:              8080,
+						Username:          "username",
+						Password:          "password",
+						TLSCertVerication: network.IgnoreTLSCert,
+						StartUpBanner:     false,
 					},
 					Bosh: config.Bosh{
 						URL:         "some-url",

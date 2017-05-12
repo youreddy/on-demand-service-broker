@@ -9,6 +9,7 @@ package cf
 import (
 	"fmt"
 	"log"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 type Client struct {
@@ -20,9 +21,9 @@ func New(
 	url string,
 	authHeaderBuilder AuthHeaderBuilder,
 	trustedCertPEM []byte,
-	disableTLSCertVerification bool,
+	tlsCertVerification network.TLSCertVerification,
 ) (Client, error) {
-	httpClient, err := newWrappedHttpClient(authHeaderBuilder, trustedCertPEM, disableTLSCertVerification)
+	httpClient, err := newWrappedHttpClient(authHeaderBuilder, trustedCertPEM, tlsCertVerification)
 	if err != nil {
 		return Client{}, err
 	}

@@ -14,9 +14,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
 	"github.com/pivotal-cf/on-demand-service-broker/authorizationheader"
 	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 	"gopkg.in/yaml.v2"
 )
@@ -40,7 +40,7 @@ func New(boshURL, uaaURL, boshUsername, boshPassword, boshCACert string) *BoshHe
 	return &BoshHelperClient{Client: boshClient}
 }
 
-func NewBasicAuth(boshURL, boshUsername, boshPassword, boshCACert string, disableTLSVerification bool) *BoshHelperClient {
+func NewBasicAuth(boshURL, boshUsername, boshPassword, boshCACert string, tlsCertVerification network.TLSCertVerification) *BoshHelperClient {
 	var boshCACertContents []byte
 	if boshCACert != "" {
 		var err error
@@ -50,7 +50,7 @@ func NewBasicAuth(boshURL, boshUsername, boshPassword, boshCACert string, disabl
 
 	basicAuthHeaderBuilder := authorizationheader.NewBasicAuthHeaderBuilder(boshUsername, boshPassword)
 	var err error
-	boshClient, err := boshdirector.New(boshURL, basicAuthHeaderBuilder, disableTLSVerification, boshCACertContents)
+	boshClient, err := boshdirector.New(boshURL, basicAuthHeaderBuilder, tlsCertVerification, boshCACertContents)
 	Expect(err).NotTo(HaveOccurred())
 	return &BoshHelperClient{Client: boshClient}
 }

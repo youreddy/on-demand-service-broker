@@ -14,6 +14,7 @@ import (
 
 	"github.com/pivotal-cf/on-demand-service-broker/cf"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 //go:generate counterfeiter -o fakes/fake_cloud_foundry_client.go . CloudFoundryClient
@@ -34,11 +35,11 @@ type Sleeper interface {
 }
 
 type Config struct {
-	ServiceCatalog             ServiceCatalog `yaml:"service_catalog"`
-	DisableSSLCertVerification bool           `yaml:"disable_ssl_cert_verification"`
-	CF                         config.CF      `yaml:"cf"`
-	PollingInterval            int            `yaml:"polling_interval"`
-	PollingInitialOffset       int            `yaml:"polling_initial_offset"`
+	ServiceCatalog       ServiceCatalog              `yaml:"service_catalog"`
+	TLSCertVerification  network.TLSCertVerification `yaml:"disable_ssl_cert_verification"`
+	CF                   config.CF                   `yaml:"cf"`
+	PollingInterval      int                         `yaml:"polling_interval"`
+	PollingInitialOffset int                         `yaml:"polling_initial_offset"`
 }
 
 type ServiceCatalog struct {

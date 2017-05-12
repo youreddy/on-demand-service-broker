@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/pivotal-cf/on-demand-service-broker/authorizationheader"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 	"gopkg.in/yaml.v2"
 )
@@ -61,11 +62,11 @@ func (c Config) Validate() error {
 }
 
 type Broker struct {
-	Port                       int
-	Username                   string
-	Password                   string
-	DisableSSLCertVerification bool `yaml:"disable_ssl_cert_verification"`
-	StartUpBanner              bool `yaml:"startup_banner"`
+	Port              int
+	Username          string
+	Password          string
+	TLSCertVerication network.TLSCertVerification `yaml:"disable_ssl_cert_verification"`
+	StartUpBanner     bool                        `yaml:"startup_banner"`
 }
 
 func (b Broker) Validate() error {
@@ -135,13 +136,13 @@ type AuthHeaderBuilder interface {
 	Build(logger *log.Logger) (string, error)
 }
 
-func (cf CF) NewAuthHeaderBuilder(disableSSLCertVerification bool) (AuthHeaderBuilder, error) {
+func (cf CF) NewAuthHeaderBuilder(tlsCertVerification network.TLSCertVerification) (AuthHeaderBuilder, error) {
 	if cf.Authentication.ClientCredentials.IsSet() {
 		return authorizationheader.NewClientTokenAuthHeaderBuilder(
 			cf.Authentication.URL,
 			cf.Authentication.ClientCredentials.ID,
 			cf.Authentication.ClientCredentials.Secret,
-			disableSSLCertVerification,
+			tlsCertVerification,
 			[]byte(cf.TrustedCert),
 		)
 	} else {
@@ -151,7 +152,7 @@ func (cf CF) NewAuthHeaderBuilder(disableSSLCertVerification bool) (AuthHeaderBu
 			"",
 			cf.Authentication.UserCredentials.Username,
 			cf.Authentication.UserCredentials.Password,
-			disableSSLCertVerification,
+			tlsCertVerification,
 			[]byte(cf.TrustedCert),
 		)
 	}
@@ -189,14 +190,14 @@ func (a UAAAuthentication) IsSet() bool {
 
 func (b Bosh) Validate() error {
 	if b.URL == "" {
-		return fmt.Errorf("Must specify bosh url")
+		return errors.New("Must specify bosh url")
 	}
 	return b.Authentication.Validate()
 }
 
 func (cf CF) Validate() error {
 	if cf.URL == "" {
-		return fmt.Errorf("Must specify CF url")
+		return errors.New("Must specify CF url")
 	}
 	return cf.Authentication.Validate()
 }
@@ -209,13 +210,13 @@ func (a UAAAuthentication) Validate() error {
 	var err error
 
 	if !urlIsSet && !clientIsSet && !basicSet {
-		return fmt.Errorf("Must specify UAA authentication")
+		return errors.New("Must specify UAA authentication")
 	} else if !urlIsSet {
-		return fmt.Errorf("Must specify UAA url")
+		return errors.New("Must specify UAA url")
 	} else if !clientIsSet && !basicSet {
-		return fmt.Errorf("Must specify UAA credentials")
+		return errors.New("Must specify UAA credentials")
 	} else if clientIsSet && basicSet {
-		err = fmt.Errorf("Cannot specify both client and user credentials for UAA authentication")
+		err = errors.New("Cannot specify both client and user credentials for UAA authentication")
 	} else if clientIsSet {
 		err = validateNoFieldsEmptyString(a.ClientCredentials, "client_credentials")
 	} else if basicSet {
@@ -227,15 +228,15 @@ func (a UAAAuthentication) Validate() error {
 
 func (c Credhub) Validate() error {
 	if c.APIURL == "" {
-		return fmt.Errorf("Must specify a Credhub api_url")
+		return errors.New("Must specify a Credhub api_url")
 	}
 
 	if c.ID == "" {
-		return fmt.Errorf("Must specify a Credhub client_id")
+		return errors.New("Must specify a Credhub client_id")
 	}
 
 	if c.Secret == "" {
-		return fmt.Errorf("Must specify a Credhub client_secret")
+		return errors.New("Must specify a Credhub client_secret")
 	}
 
 	return nil
@@ -256,9 +257,9 @@ func (a BOSHAuthentication) Validate() error {
 	var err error
 
 	if !uaaSet && !basicSet {
-		return fmt.Errorf("Must specify bosh authentication")
+		return errors.New("Must specify bosh authentication")
 	} else if uaaSet && basicSet {
-		err = fmt.Errorf("Cannot specify both basic and UAA for BOSH authentication")
+		err = errors.New("Cannot specify both basic and UAA for BOSH authentication")
 	} else if uaaSet {
 		err = validateNoFieldsEmptyString(a.UAA, "uaa")
 	} else if basicSet {

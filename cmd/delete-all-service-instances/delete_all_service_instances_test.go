@@ -24,6 +24,7 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
 	"github.com/pivotal-cf/on-demand-service-broker/mockuaa"
 	"gopkg.in/yaml.v2"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 var _ = Describe("delete all service instances tool", func() {
@@ -56,7 +57,7 @@ var _ = Describe("delete all service instances tool", func() {
 			ServiceCatalog: deleter.ServiceCatalog{
 				ID: serviceID,
 			},
-			DisableSSLCertVerification: true,
+			TLSCertVerification: network.IgnoreTLSCert,
 			CF: config.CF{
 				URL: cfAPI.URL,
 				Authentication: config.UAAAuthentication{

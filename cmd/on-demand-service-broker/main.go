@@ -28,6 +28,7 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/task"
 	"github.com/urfave/negroni"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 func main() {
@@ -67,7 +68,7 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 			boshAuthConfig.UAA.UAAURL,
 			boshAuthConfig.UAA.ID,
 			boshAuthConfig.UAA.Secret,
-			conf.Broker.DisableSSLCertVerification,
+			conf.Broker.TLSCertVerication,
 			[]byte(conf.Bosh.TrustedCert),
 		)
 		if err != nil {
@@ -75,12 +76,12 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 		}
 	}
 
-	boshClient, err := boshdirector.New(conf.Bosh.URL, boshAuthenticator, conf.Broker.DisableSSLCertVerification, []byte(conf.Bosh.TrustedCert))
+	boshClient, err := boshdirector.New(conf.Bosh.URL, boshAuthenticator, conf.Broker.TLSCertVerication, []byte(conf.Bosh.TrustedCert))
 	if err != nil {
 		logger.Fatalf("error creating bosh client: %s", err)
 	}
 
-	cfAuthenticator, err := conf.CF.NewAuthHeaderBuilder(conf.Broker.DisableSSLCertVerification)
+	cfAuthenticator, err := conf.CF.NewAuthHeaderBuilder(conf.Broker.TLSCertVerication)
 	if err != nil {
 		logger.Fatalf("error creating CF authorization header builder: %s", err)
 	}
@@ -89,7 +90,7 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 		conf.CF.URL,
 		cfAuthenticator,
 		[]byte(conf.CF.TrustedCert),
-		conf.Broker.DisableSSLCertVerification,
+		conf.Broker.TLSCertVerication,
 	)
 	if err != nil {
 		logger.Fatalf("error creating Cloud Foundry client: %s", err)
@@ -108,7 +109,7 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 	)
 
 	deploymentManager := task.NewDeployer(boshClient, manifestGenerator)
-	credStore := credentialStore(conf.Credhub, conf.Broker.DisableSSLCertVerification)
+	credStore := credentialStore(conf.Credhub, conf.Broker.TLSCertVerication)
 
 	onDemandBroker, err := broker.New(boshClient, cfClient, credStore, serviceAdapter, deploymentManager, conf.ServiceCatalog, loggerFactory, conf.Features)
 	if err != nil {
@@ -147,7 +148,7 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 	server.Run(fmt.Sprintf("0.0.0.0:%d", conf.Broker.Port))
 }
 
-func credentialStore(credhub *config.Credhub, disableSSLCertVerification bool) credstore.Client {
+func credentialStore(credhub *config.Credhub, tlsCertVerification network.TLSCertVerification) credstore.Client {
 	if credhub == nil {
 		return credstore.Noop
 	}
@@ -156,6 +157,6 @@ func credentialStore(credhub *config.Credhub, disableSSLCertVerification bool) c
 		credhub.APIURL,
 		credhub.ID,
 		credhub.Secret,
-		disableSSLCertVerification,
+		tlsCertVerification,
 	)
 }

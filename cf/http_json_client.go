@@ -7,15 +7,13 @@
 package cf
 
 import (
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
-
 	"github.com/craigfurman/herottp"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 type httpJsonClient struct {
@@ -114,20 +112,13 @@ func errorMessageFromRawBody(rawBody []byte) string {
 	return message
 }
 
-func newWrappedHttpClient(authHeaderBuilder AuthHeaderBuilder, trustedCertPEM []byte, disableTLSCertVerification bool) (httpJsonClient, error) {
-	rootCAs, err := x509.SystemCertPool()
+func newWrappedHttpClient(authHeaderBuilder AuthHeaderBuilder, trustedCertPEM []byte, tlsCertVerification network.TLSCertVerification) (httpJsonClient, error) {
+	httpClient, err := network.NewTrustedHttpClient(tlsCertVerification, network.FollowRedirect, trustedCertPEM)
 	if err != nil {
 		return httpJsonClient{}, err
 	}
-	rootCAs.AppendCertsFromPEM(trustedCertPEM)
-	config := herottp.Config{
-		DisableTLSCertificateVerification: disableTLSCertVerification,
-		RootCAs: rootCAs,
-		Timeout: 30 * time.Second,
-	}
-
 	return httpJsonClient{
-		client:            herottp.New(config),
+		client:            httpClient,
 		AuthHeaderBuilder: authHeaderBuilder,
 	}, nil
 }

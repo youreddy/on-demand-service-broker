@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 	"github.com/pivotal-cf/on-demand-service-broker/system_tests/bosh_helpers"
 	"github.com/pivotal-cf/on-demand-service-broker/system_tests/cf_helpers"
 )
@@ -40,7 +41,7 @@ var _ = BeforeSuite(func() {
 	boshPassword := envMustHave("BOSH_PASSWORD")
 	uaaURL := os.Getenv("UAA_URL")
 	boshCACert := os.Getenv("BOSH_CA_CERT_FILE")
-	disableTLSVerification := boshCACert == ""
+	disableTLSVerification := tlsVerification(boshCACert)
 	exampleAppPath = envMustHave("EXAMPLE_APP_PATH")
 	Eventually(cf.Cf("create-service-broker", brokerName, brokerUsername, brokerPassword, brokerURL), cf_helpers.CfTimeout).Should(gexec.Exit(0))
 	Eventually(cf.Cf("enable-service-access", serviceOffering), cf_helpers.CfTimeout).Should(gexec.Exit(0))
@@ -51,6 +52,14 @@ var _ = BeforeSuite(func() {
 		boshClient = bosh_helpers.New(boshURL, uaaURL, boshUsername, boshPassword, boshCACert)
 	}
 })
+
+func tlsVerification(caCert string) network.TLSCertVerification {
+	if caCert == "" {
+		return network.IgnoreTLSCert
+	} else {
+		return network.VerifyTLSCert
+	}
+}
 
 var _ = AfterSuite(func() {
 	Eventually(cf.Cf("delete-service-broker", brokerName, "-f"), cf_helpers.CfTimeout).Should(gexec.Exit(0))

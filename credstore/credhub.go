@@ -8,30 +8,31 @@ package credstore
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
-	"errors"
 	"github.com/pivotal-cf/credhub-cli/actions"
 	"github.com/pivotal-cf/credhub-cli/client"
 	"github.com/pivotal-cf/credhub-cli/commands"
 	"github.com/pivotal-cf/credhub-cli/config"
 	"github.com/pivotal-cf/credhub-cli/repositories"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 type Credhub struct {
-	url                        string
-	id                         string
-	secret                     string
-	disableSSLCertVerification bool
+	url                 string
+	id                  string
+	secret              string
+	tlsCertVerification network.TLSCertVerification
 }
 
-func NewCredhubClient(url, id, secret string, disableSSLCertVertification bool) *Credhub {
+func NewCredhubClient(url, id, secret string, tlsCertVerification network.TLSCertVerification) *Credhub {
 	return &Credhub{
-		url:    url,
-		id:     id,
-		secret: secret,
-		disableSSLCertVerification: disableSSLCertVertification,
+		url:                 url,
+		id:                  id,
+		secret:              secret,
+		tlsCertVerification: tlsCertVerification,
 	}
 }
 
@@ -42,7 +43,7 @@ func (c *Credhub) PutCredentials(identifier string, credentialsMap map[string]in
 	}
 
 	cfg := config.Config{}
-	cfg.InsecureSkipVerify = c.disableSSLCertVerification
+	cfg.InsecureSkipVerify = c.tlsCertVerification == network.IgnoreTLSCert
 	commands.GetApiInfo(&cfg, c.url, false)
 
 	httpClient := client.NewHttpClient(cfg)

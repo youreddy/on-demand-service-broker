@@ -7,12 +7,44 @@
 package network
 
 import (
-	"github.com/craigfurman/herottp"
+	"crypto/x509"
 	"time"
+
+	"github.com/craigfurman/herottp"
 )
 
 func NewDefaultHTTPClient() *herottp.Client {
 	return herottp.New(herottp.Config{
 		Timeout: 30 * time.Second,
 	})
+}
+
+type RedirectChoice bool
+
+const (
+	NoFollowRedirect RedirectChoice = true
+	FollowRedirect                  = false
+)
+
+type TLSCertVerification bool
+
+const (
+	IgnoreTLSCert TLSCertVerification = true
+	VerifyTLSCert                     = false
+)
+
+func NewTrustedHttpClient(tslCertVerification TLSCertVerification, redirect RedirectChoice, trustedCertPEM []byte) (*herottp.Client, error) {
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, err
+	}
+	rootCAs.AppendCertsFromPEM(trustedCertPEM)
+
+	return herottp.New(
+		herottp.Config{
+			NoFollowRedirect:                  redirect == NoFollowRedirect,
+			DisableTLSCertificateVerification: tslCertVerification == IgnoreTLSCert,
+			RootCAs: rootCAs,
+			Timeout: 30 * time.Second,
+		}), nil
 }

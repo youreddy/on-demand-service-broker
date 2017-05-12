@@ -7,13 +7,12 @@
 package authorizationheader
 
 import (
-	"crypto/x509"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/craigfurman/herottp"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 type HTTPClient interface {
@@ -41,25 +40,20 @@ func NewClientTokenAuthHeaderBuilder(
 	uaaURL,
 	clientID,
 	clientSecret string,
-	disableSSLCertVerification bool,
+	tlsCertVerification network.TLSCertVerification,
 	trustedCertPEM []byte,
 ) (*ClientTokenAuthHeaderBuilder, error) {
-	rootCAs, err := x509.SystemCertPool()
+	httpClient, err := network.NewTrustedHttpClient(tlsCertVerification, network.FollowRedirect, trustedCertPEM)
 	if err != nil {
 		return nil, err
 	}
-	rootCAs.AppendCertsFromPEM(trustedCertPEM)
 
 	return &ClientTokenAuthHeaderBuilder{
 		uaaURL:       uaaURL,
 		clientID:     clientID,
 		clientSecret: clientSecret,
-		httpClient: herottp.New(herottp.Config{
-			DisableTLSCertificateVerification: disableSSLCertVerification,
-			RootCAs: rootCAs,
-			Timeout: 30 * time.Second,
-		}),
-		tokenLock: new(sync.Mutex),
+		httpClient:   httpClient,
+		tokenLock:    new(sync.Mutex),
 	}, nil
 }
 

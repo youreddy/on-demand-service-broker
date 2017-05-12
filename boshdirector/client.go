@@ -8,7 +8,6 @@ package boshdirector
 
 import (
 	"bytes"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/craigfurman/herottp"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 type Client struct {
@@ -40,22 +39,16 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func New(url string, authHeaderBuilder AuthHeaderBuilder, disableSSLCertVerification bool, trustedCertPEM []byte) (*Client, error) {
-	rootCAs, err := x509.SystemCertPool()
+func New(url string, authHeaderBuilder AuthHeaderBuilder, tlsCertVerification network.TLSCertVerification, trustedCertPEM []byte) (*Client, error) {
+	httpClient, err := network.NewTrustedHttpClient(tlsCertVerification, network.NoFollowRedirect, trustedCertPEM)
 	if err != nil {
 		return nil, err
 	}
-	rootCAs.AppendCertsFromPEM(trustedCertPEM)
 	return &Client{
 		url:               url,
 		authHeaderBuilder: authHeaderBuilder,
-		httpClient: herottp.New(herottp.Config{
-			NoFollowRedirect:                  true,
-			DisableTLSCertificateVerification: disableSSLCertVerification,
-			RootCAs: rootCAs,
-			Timeout: 30 * time.Second,
-		}),
-		PollingInterval: 5,
+		httpClient:        httpClient,
+		PollingInterval:   5,
 	}, nil
 }
 
