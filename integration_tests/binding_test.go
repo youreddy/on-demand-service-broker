@@ -12,8 +12,8 @@ import (
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/pivotal-cf/on-demand-service-broker/adapterclient"
-	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
+	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
+	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	sdk "github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
@@ -52,7 +52,7 @@ var _ = Describe("binding service instances", func() {
 		When(creatingNewBinding).
 			With(NoCredhub, serviceAdapterFails, boshHasVMsForServiceInstance).
 			theBroker(
-				RespondsWith(http.StatusConflict, errorBody(adapterclient.BindingAlreadyExistsMessage)),
+				RespondsWith(http.StatusConflict, errorBody(serviceadapter.BindingAlreadyExistsMessage)),
 				Logging(stderrMessage),
 			)
 	})
@@ -62,7 +62,7 @@ var _ = Describe("binding service instances", func() {
 			With(NoCredhub, noServiceAdapter, boshConnectionFails).
 			theBroker(
 				RespondsWith(http.StatusInternalServerError, errorBody("Currently unable to bind service instance, please try again later")),
-				Logging(boshclient.UnreachableMessage),
+				Logging(boshdirector.UnreachableMessage),
 			)
 	})
 

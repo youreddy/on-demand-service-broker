@@ -9,7 +9,7 @@ package integration_tests
 import (
 	"math/rand"
 
-	"github.com/pivotal-cf/on-demand-service-broker/boshclient"
+	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/mockbosh"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
@@ -68,7 +68,7 @@ func (b *Bosh) HasVMsFor(deploymentName string) {
 
 	b.Director.AppendMocks(
 		mockbosh.VMsForDeployment(deploymentName).RedirectsToTask(taskID),
-		mockbosh.Task(taskID).RespondsWithTaskContainingState(boshclient.BoshTaskDone),
+		mockbosh.Task(taskID).RespondsWithTaskContainingState(boshdirector.TaskDone),
 		mockbosh.TaskOutput(taskID).RespondsWithBody(boshVMDescription),
 	)
 }
