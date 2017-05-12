@@ -22,20 +22,22 @@ const (
 )
 
 type BrokerEnvironment struct {
-	Broker         *Broker
-	Bosh           *Bosh
-	CF             *CloudFoundry
-	ServiceAdapter *ServiceAdapter
-	Credhub        Credhub
+	Broker            *Broker
+	Bosh              *Bosh
+	CF                *CloudFoundry
+	ServiceAdapter    *ServiceAdapter
+	Credhub           Credhub
+	serviceInstanceID ServiceInstanceID
 }
 
 func NewBrokerEnvironment(bosh *Bosh, cf *CloudFoundry, serviceAdapter *ServiceAdapter, credhub Credhub, brokerBinaryPath string) *BrokerEnvironment {
 	return &BrokerEnvironment{
-		Broker:         NewBroker(brokerBinaryPath),
-		Bosh:           bosh,
-		CF:             cf,
-		ServiceAdapter: serviceAdapter,
-		Credhub:        credhub,
+		Broker:            NewBroker(brokerBinaryPath),
+		Bosh:              bosh,
+		CF:                cf,
+		ServiceAdapter:    serviceAdapter,
+		Credhub:           credhub,
+		serviceInstanceID: AServiceInstanceID(),
 	}
 }
 

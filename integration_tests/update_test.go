@@ -16,10 +16,10 @@ import (
 )
 
 var _ = Describe("updating a service instance", func() {
-	It("returns tracking data for an update operation", func() {
+	XIt("returns tracking data for an update operation", func() {
 		updateTaskID := rand.Int()
-		boshDeploysUpdatedManifest := func(env *BrokerEnvironment, id ServiceInstanceID) {
-			deploymentName := broker.DeploymentNameFrom(string(id))
+		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
+			deploymentName := broker.DeploymentNameFrom(string(env.serviceInstanceID))
 
 			env.Bosh.HasNoTasksFor(deploymentName)
 			env.Bosh.HasManifestFor(deploymentName)
@@ -27,17 +27,16 @@ var _ = Describe("updating a service instance", func() {
 		}
 
 		When(updatingServiceInstance).
-			with(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
-			brokerRespondsWith(
-				http.StatusAccepted,
-				fmt.Sprintf(`{"operation":{"OperationType":"update", "BoshTaskID": %d}`, updateTaskID),
-				"foo",
+			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
+			theBroker(
+				RespondsWith(http.StatusAccepted, fmt.Sprintf(`{"operation":{"OperationType":"update", "BoshTaskID": %d}`, updateTaskID)),
+				Logging("foo"),
 			)
 	})
 })
 
-var updatingServiceInstance = func(env *BrokerEnvironment, id ServiceInstanceID) *http.Request {
-	return env.Broker.UpdateServiceInstanceRequest(id)
+var updatingServiceInstance = func(env *BrokerEnvironment) *http.Request {
+	return env.Broker.UpdateServiceInstanceRequest(env.serviceInstanceID)
 }
 var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanceID) {
 	sa.adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(id))

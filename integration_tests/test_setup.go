@@ -18,12 +18,14 @@ var (
 	serviceAdapterPath = NewBinary("github.com/pivotal-cf/on-demand-service-broker/integration_tests/mock/adapter")
 )
 
-type Requestifier func(*BrokerEnvironment, ServiceInstanceID) *http.Request
+type Requestifier func(*BrokerEnvironment) *http.Request
+type ResponseChecker func(*http.Response)
+type LogChecker func(*BrokerEnvironment)
 
 type TestSetup struct {
 	credhub             Credhub
 	serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID)
-	setup               func(*BrokerEnvironment, ServiceInstanceID)
+	setup               func(*BrokerEnvironment)
 	requestifier        Requestifier
 }
 
@@ -31,7 +33,7 @@ func When(requestifier Requestifier) Requestifier {
 	return requestifier
 }
 
-func (r Requestifier) with(credhub Credhub, serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID), setup func(*BrokerEnvironment, ServiceInstanceID)) *TestSetup {
+func (r Requestifier) With(credhub Credhub, serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID), setup func(*BrokerEnvironment)) *TestSetup {
 	return &TestSetup{
 		credhub:             credhub,
 		serviceAdapterSetup: serviceAdapterSetup,
@@ -40,29 +42,36 @@ func (r Requestifier) with(credhub Credhub, serviceAdapterSetup func(*ServiceAda
 	}
 }
 
-func (ts *TestSetup) brokerRespondsWith(expectedStatus int, expectedResponse string, expectedLogMessage string) {
-	ts.checkBrokerResponseWhen(expectedStatus, expectedResponse, expectedLogMessage)
+func (ts *TestSetup) theBroker(checkResponse ResponseChecker, checkLogs LogChecker) {
+	ts.checkBrokerResponseWhen(checkResponse, checkLogs)
 }
 
-func (ts *TestSetup) checkBrokerResponseWhen(
-	expectedStatus int,
-	expectedResponse string,
-	expectedLogMessage string,
-) {
-	serviceInstanceID := AServiceInstanceID()
+func (ts *TestSetup) checkBrokerResponseWhen(checkResponse ResponseChecker, checkLogs LogChecker) {
 	env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), ts.credhub, brokerPath.Path())
 	defer env.Close()
 
-	ts.serviceAdapterSetup(env.ServiceAdapter, serviceInstanceID)
+	ts.serviceAdapterSetup(env.ServiceAdapter, env.serviceInstanceID)
 	env.Start()
-	ts.setup(env, serviceInstanceID)
+	ts.setup(env)
 
-	response := responseTo(ts.requestifier(env, serviceInstanceID))
-	Expect(response.StatusCode).To(Equal(expectedStatus))
-	Expect(bodyOf(response)).To(MatchJSON(expectedResponse))
-	env.Broker.HasLogged(expectedLogMessage)
+	response := responseTo(ts.requestifier(env))
+	checkResponse(response)
+	checkLogs(env)
 
 	env.Verify()
+}
+
+func RespondsWith(expectedStatus int, expectedResponse string) ResponseChecker {
+	return func(response *http.Response) {
+		Expect(response.StatusCode).To(Equal(expectedStatus))
+		Expect(bodyOf(response)).To(MatchJSON(expectedResponse))
+	}
+}
+
+func Logging(expectedMessage string) LogChecker {
+	return func(env *BrokerEnvironment) {
+		env.Broker.HasLogged(expectedMessage)
+	}
 }
 
 func responseTo(request *http.Request) *http.Response {
