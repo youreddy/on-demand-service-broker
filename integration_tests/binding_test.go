@@ -12,20 +12,19 @@ import (
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
+	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	sdk "github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
 
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
-
 		When(creatingNewBinding).
 			With(NoCredhub, serviceAdapterReturnsBinding, boshHasVMsForServiceInstance).
 			theBroker(
 				RespondsWith(http.StatusCreated, BindingResponse),
-				Logging(fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF)))
+				Logs(fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF)))
 	})
 
 	It("sends login details to credhub when credhub configured", func() {
@@ -39,7 +38,7 @@ var _ = Describe("binding service instances", func() {
 			With(aCredhub, serviceAdapterReturnsBinding, boshHasDeploymentWithCredhub).
 			theBroker(
 				RespondsWith(http.StatusCreated, BindingResponse),
-				Logging(fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF)),
+				Logs(fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF)),
 			)
 	})
 
@@ -53,7 +52,7 @@ var _ = Describe("binding service instances", func() {
 			With(NoCredhub, serviceAdapterFails, boshHasVMsForServiceInstance).
 			theBroker(
 				RespondsWith(http.StatusConflict, errorBody(serviceadapter.BindingAlreadyExistsMessage)),
-				Logging(stderrMessage),
+				Logs(stderrMessage),
 			)
 	})
 
@@ -62,7 +61,7 @@ var _ = Describe("binding service instances", func() {
 			With(NoCredhub, noServiceAdapter, boshConnectionFails).
 			theBroker(
 				RespondsWith(http.StatusInternalServerError, errorBody("Currently unable to bind service instance, please try again later")),
-				Logging(boshdirector.UnreachableMessage),
+				Logs(boshdirector.UnreachableMessage),
 			)
 	})
 
@@ -71,7 +70,7 @@ var _ = Describe("binding service instances", func() {
 			With(NoCredhub, noServiceAdapter, boshHasNoVMs).
 			theBroker(
 				RespondsWith(http.StatusNotFound, errorBody("instance does not exist")),
-				Logging("not found"), // TODO Where to get service instance ID?
+				LogsWithServiceId("instance %s, not found"),
 			)
 	})
 })

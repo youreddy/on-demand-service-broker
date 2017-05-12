@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	. "github.com/onsi/gomega"
+	"fmt"
 )
 
 var (
@@ -68,12 +69,17 @@ func RespondsWith(expectedStatus int, expectedResponse string) ResponseChecker {
 	}
 }
 
-func Logging(expectedMessage string) LogChecker {
+func Logs(expectedMessage string) LogChecker {
 	return func(env *BrokerEnvironment) {
 		env.Broker.HasLogged(expectedMessage)
 	}
 }
 
+func LogsWithServiceId(expectedMessageTemplate string) LogChecker {
+	return func(env *BrokerEnvironment) {
+		env.Broker.HasLogged(fmt.Sprintf(expectedMessageTemplate, env.serviceInstanceID))
+	}
+}
 func responseTo(request *http.Request) *http.Response {
 	response, err := http.DefaultClient.Do(request)
 	Expect(err).ToNot(HaveOccurred())
