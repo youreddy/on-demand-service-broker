@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
-	"github.com/pivotal-cf/on-demand-service-broker/mockuaa"
+	"github.com/pivotal-cf/on-demand-service-broker/mockhttp/mockuaa"
 	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 	"gopkg.in/yaml.v2"
 	"github.com/pivotal-cf/on-demand-service-broker/network"

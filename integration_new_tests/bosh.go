@@ -13,7 +13,7 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp/mockbosh"
-	"github.com/pivotal-cf/on-demand-service-broker/mockuaa"
+	"github.com/pivotal-cf/on-demand-service-broker/mockhttp/mockuaa"
 	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 )
 
