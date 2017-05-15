@@ -20,6 +20,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	missingPlanMessage = "plan '%s' not found"
+)
+
 type Config struct {
 	Broker            Broker
 	Credhub           *Credhub `yaml:",omitempty"`
@@ -306,6 +310,19 @@ func validateNoFieldsEmptyString(obj interface{}, objName string) error {
 	return nil
 }
 
+type MissingPlanForIDError struct {
+	error
+	ID string
+}
+
+func (m MissingPlanForIDError) Error() string {
+	return fmt.Sprintf(missingPlanMessage, m.ID)
+}
+
+func (m MissingPlanForIDError) LogTo(logger *log.Logger, message string) {
+	logger.Printf("%s: %s\n", message, m.Error())
+}
+
 type ServiceOffering struct {
 	ID               string
 	Name             string `yaml:"service_name"`
@@ -321,11 +338,11 @@ type ServiceOffering struct {
 	Plans            Plans
 }
 
-func (s ServiceOffering) FindPlanByID(id string) (Plan, bool) {
+func (s *ServiceOffering) FindPlanByID(id string) (Plan, bool) {
 	return s.Plans.FindByID(id)
 }
 
-func (s ServiceOffering) HasLifecycleErrands() bool {
+func (s *ServiceOffering) HasLifecycleErrands() bool {
 	for _, plan := range s.Plans {
 		if plan.LifecycleErrands != nil {
 			if plan.LifecycleErrands.PostDeploy != "" || plan.LifecycleErrands.PreDelete != "" {
@@ -362,7 +379,7 @@ type Plan struct {
 	LifecycleErrands *LifecycleErrands              `yaml:"lifecycle_errands,omitempty"`
 }
 
-func (p Plan) AdapterPlan(globalProperties serviceadapter.Properties) serviceadapter.Plan {
+func (p *Plan) AdapterPlan(globalProperties serviceadapter.Properties) serviceadapter.Plan {
 	return serviceadapter.Plan{
 		Properties:     mergeProperties(p.Properties, globalProperties),
 		InstanceGroups: p.InstanceGroups,
@@ -381,7 +398,7 @@ func mergeProperties(planProperties, globalProperties serviceadapter.Properties)
 	return properties
 }
 
-func (p Plan) PostDeployErrand() string {
+func (p *Plan) PostDeployErrand() string {
 	if p.LifecycleErrands == nil {
 		return ""
 	}
@@ -389,7 +406,7 @@ func (p Plan) PostDeployErrand() string {
 	return p.LifecycleErrands.PostDeploy
 }
 
-func (p Plan) PreDeleteErrand() string {
+func (p *Plan) PreDeleteErrand() string {
 	if p.LifecycleErrands == nil {
 		return ""
 	}

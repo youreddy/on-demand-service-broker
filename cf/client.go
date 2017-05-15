@@ -8,8 +8,8 @@ package cf
 
 import (
 	"fmt"
-	"log"
 	"github.com/pivotal-cf/on-demand-service-broker/network"
+	"log"
 )
 
 type Client struct {

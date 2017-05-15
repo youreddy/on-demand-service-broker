@@ -44,10 +44,6 @@ func (r Requestifier) With(credhub Credhub, serviceAdapterSetup func(*ServiceAda
 }
 
 func (ts *TestSetup) theBroker(checkResponse ResponseChecker, checkLogs LogChecker) {
-	ts.checkBrokerResponseWhen(checkResponse, checkLogs)
-}
-
-func (ts *TestSetup) checkBrokerResponseWhen(checkResponse ResponseChecker, checkLogs LogChecker) {
 	env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), ts.credhub, brokerPath.Path())
 	defer env.Close()
 

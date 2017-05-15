@@ -25,10 +25,10 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/credstore"
 	"github.com/pivotal-cf/on-demand-service-broker/loggerfactory"
 	"github.com/pivotal-cf/on-demand-service-broker/mgmtapi"
+	"github.com/pivotal-cf/on-demand-service-broker/network"
 	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/task"
 	"github.com/urfave/negroni"
-	"github.com/pivotal-cf/on-demand-service-broker/network"
 )
 
 func main() {

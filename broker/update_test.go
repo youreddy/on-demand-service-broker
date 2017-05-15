@@ -14,8 +14,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/brokerapi"
-	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
+	"github.com/pivotal-cf/on-demand-service-broker/config"
+	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/task"
 )
 
@@ -349,10 +350,8 @@ var _ = Describe("Update", func() {
 			})
 
 			It("reports the error without redploying", func() {
-				expectedMessage := fmt.Sprintf("Plan %s not found", newPlanID)
-				Expect(updateError).To(MatchError(ContainSubstring(expectedMessage)))
-
-				Expect(logBuffer.String()).To(ContainSubstring(expectedMessage))
+				Expect(updateError).To(Equal(config.MissingPlanForIDError{ID: newPlanID}))
+				Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf("Update: plan '%s' not found", newPlanID)))
 				Expect(boshClient.GetDeploymentCallCount()).To(BeZero())
 				Expect(fakeDeployer.UpdateCallCount()).To(BeZero())
 			})
