@@ -9,13 +9,13 @@ package broker_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-service-broker/cf"
+	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/task"
 )
@@ -180,8 +180,12 @@ var _ = Describe("Upgrade", func() {
 		})
 
 		It("fails and does not redeploy", func() {
-			Expect(redeployErr).To(MatchError(ContainSubstring(fmt.Sprintf("plan %s not found", planID))))
-			Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf("error: finding plan ID %s", planID)))
+			Expect(redeployErr).To(Equal(config.MissingPlanForIDError{ID: planID}))
+
+			Expect(logBuffer.String()).To(SatisfyAll(
+				ContainSubstring("Upgrade"),
+				ContainSubstring(string(planID)),
+			))
 			Expect(fakeDeployer.UpgradeCallCount()).To(BeZero())
 		})
 	})

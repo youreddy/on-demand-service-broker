@@ -12,6 +12,7 @@ import (
 	"log"
 
 	"github.com/pborman/uuid"
+	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/task"
 )
@@ -33,8 +34,9 @@ func (b *Broker) Upgrade(ctx context.Context, instanceID string, logger *log.Log
 
 	plan, found := b.serviceOffering.FindPlanByID(instance.PlanID)
 	if !found {
-		logger.Printf("error: finding plan ID %s", instance.PlanID)
-		return OperationData{}, fmt.Errorf("plan %s not found", instance.PlanID)
+		err := config.MissingPlanForIDError{ID: instance.PlanID}
+		err.LogTo(logger, "Upgrade")
+		return OperationData{}, err
 	}
 
 	var boshContextID string

@@ -8,6 +8,7 @@ package task
 
 import "fmt"
 
+//TODO SF replace with config.MissingPlanForIDError?
 type PlanNotFoundError struct {
 	PlanGUID string
 }

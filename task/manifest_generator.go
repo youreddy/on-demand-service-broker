@@ -99,9 +99,9 @@ func (m manifestGenerator) findPlans(planID string, previousPlanID *string) (ser
 		return plan, nil, nil
 	}
 
-	previousPlan, err := m.findPreviousPlan(*previousPlanID)
-	if err != nil {
-		return serviceadapter.Plan{}, nil, err
+	previousPlan, found := m.findPreviousPlan(*previousPlanID)
+	if !found {
+		return serviceadapter.Plan{}, nil, PlanNotFoundError{PlanGUID: *previousPlanID}
 	}
 
 	return plan, previousPlan, nil
@@ -116,12 +116,12 @@ func (m manifestGenerator) findPlan(planID string) (serviceadapter.Plan, error) 
 	return plan.AdapterPlan(m.serviceOffering.GlobalProperties), nil
 }
 
-func (m manifestGenerator) findPreviousPlan(previousPlanID string) (*serviceadapter.Plan, error) {
+func (m manifestGenerator) findPreviousPlan(previousPlanID string) (*serviceadapter.Plan, bool) {
 	previousPlan, found := m.serviceOffering.FindPlanByID(previousPlanID)
 	if !found {
-		return new(serviceadapter.Plan), PlanNotFoundError{PlanGUID: previousPlanID}
+		return new(serviceadapter.Plan), false
 	}
 
 	abridgedPlan := previousPlan.AdapterPlan(m.serviceOffering.GlobalProperties)
-	return &abridgedPlan, nil
+	return &abridgedPlan, true
 }
