@@ -12,6 +12,8 @@ import (
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
@@ -23,7 +25,7 @@ var _ = Describe("binding service instances", func() {
 		When(creatingNewBinding).
 			With(NoCredhub, serviceAdapterReturnsBinding, boshHasVMsForServiceInstance).
 			theBroker(
-				RespondsWith(http.StatusCreated, BindingResponse),
+				RespondsWith(http.StatusCreated, MatchJSON(BindingResponse)),
 				Logs(fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF)))
 	})
 
@@ -37,7 +39,7 @@ var _ = Describe("binding service instances", func() {
 		When(creatingNewBinding).
 			With(aCredhub, serviceAdapterReturnsBinding, boshHasDeploymentWithCredhub).
 			theBroker(
-				RespondsWith(http.StatusCreated, BindingResponse),
+				RespondsWith(http.StatusCreated, MatchJSON(BindingResponse)),
 				Logs(fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF)),
 			)
 	})
@@ -90,6 +92,6 @@ var boshHasNoVMs = func(env *BrokerEnvironment) {
 var serviceAdapterReturnsBinding = func(sa *ServiceAdapter, id ServiceInstanceID) { sa.ReturnsBinding() }
 var noServiceAdapter = func(sa *ServiceAdapter, id ServiceInstanceID) {}
 
-func errorBody(message string) string {
-	return fmt.Sprintf(`{"description": "%s"}`, message)
+func errorBody(message string) types.GomegaMatcher {
+	return MatchJSON(fmt.Sprintf(`{"description": "%s"}`, message))
 }

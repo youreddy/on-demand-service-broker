@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 )
 
 var (
@@ -59,10 +60,10 @@ func (ts *TestSetup) theBroker(checkResponse ResponseChecker, checkLogs ...LogCh
 	env.Verify()
 }
 
-func RespondsWith(expectedStatus int, expectedResponse string) ResponseChecker {
+func RespondsWith(expectedStatus int, matchBody types.GomegaMatcher) ResponseChecker {
 	return func(response *http.Response) {
 		Expect(response.StatusCode).To(Equal(expectedStatus))
-		Expect(bodyOf(response)).To(MatchJSON(expectedResponse))
+		Expect(bodyOf(response)).To(matchBody)
 	}
 }
 

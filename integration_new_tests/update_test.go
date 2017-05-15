@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 )
 
@@ -29,7 +30,7 @@ var _ = Describe("updating a service instance", func() {
 		When(updatingServiceInstance).
 			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
-				RespondsWith(http.StatusAccepted, fmt.Sprintf(`{"operation":"{\"BoshTaskID\":%d,\"OperationType\":\"update\"}"}`, updateTaskID)),
+				RespondsWith(http.StatusAccepted, MatchJSON(fmt.Sprintf(`{"operation":"{\"BoshTaskID\":%d,\"OperationType\":\"update\"}"}`, updateTaskID))),
 				LogsWithServiceId("updating instance %s"),
 				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
 			)
