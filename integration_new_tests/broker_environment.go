@@ -11,6 +11,7 @@ import (
 	"math/rand"
 
 	"github.com/pivotal-cf/on-demand-service-broker/config"
+	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
 
 const (
@@ -49,11 +50,13 @@ func (be *BrokerEnvironment) Start() {
 
 func (be *BrokerEnvironment) Configuration() *config.Config {
 	return &config.Config{
-		Broker:         be.Broker.Configuration(),
-		Bosh:           be.Bosh.Configuration(),
-		CF:             be.CF.Configuration(),
-		ServiceAdapter: be.ServiceAdapter.Configuration(),
-		Credhub:        be.Credhub.Configuration(),
+		Broker:            be.Broker.Configuration(),
+		Bosh:              be.Bosh.Configuration(),
+		CF:                be.CF.Configuration(),
+		ServiceAdapter:    be.ServiceAdapter.Configuration(),
+		Credhub:           be.Credhub.Configuration(),
+		ServiceCatalog:    theServiceOffering(),
+		ServiceDeployment: theServiceDeployment(),
 	}
 }
 
@@ -74,4 +77,32 @@ type ServiceInstanceID string
 
 func AServiceInstanceID() ServiceInstanceID {
 	return ServiceInstanceID(fmt.Sprintf("service-instance-ID-%d", rand.Int()))
+}
+
+func theServiceOffering() config.ServiceOffering {
+	return config.ServiceOffering{
+
+		Plans: []config.Plan{
+			{
+				ID: basePlanID,
+				InstanceGroups: []serviceadapter.InstanceGroup{
+					{
+						VMType: "the-vm-type",
+						Name: "the-instance-group",
+						Instances: 1,
+						AZs: []string{ "the-az" },
+					},
+				},
+			},
+		},
+	}
+}
+
+func theServiceDeployment() config.ServiceDeployment {
+	return config.ServiceDeployment{
+		Stemcell: serviceadapter.Stemcell{
+			OS: "ubuntu-trusty",
+			Version: "10.0.01",
+		},
+	}
 }

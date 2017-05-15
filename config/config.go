@@ -338,6 +338,7 @@ type ServiceOffering struct {
 	Plans            Plans
 }
 
+//TODO SF Use the new MissingPlanForIDError wherever this function is called
 func (s *ServiceOffering) FindPlanByID(id string) (Plan, bool) {
 	return s.Plans.FindByID(id)
 }

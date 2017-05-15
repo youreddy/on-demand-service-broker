@@ -29,7 +29,7 @@ var _ = Describe("updating a service instance", func() {
 		When(updatingServiceInstance).
 			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
-				RespondsWith(http.StatusAccepted, fmt.Sprintf(`{"operation":{"OperationType":"update", "BoshTaskID": %d}`, updateTaskID)),
+				RespondsWith(http.StatusAccepted, fmt.Sprintf(`{"operation":"{\"BoshTaskID\":%d,\"OperationType\":\"update\"}"}`, updateTaskID)),
 				Logs("foo"),
 			)
 	})
