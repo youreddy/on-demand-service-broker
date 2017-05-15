@@ -7,12 +7,15 @@
 package integration_new_tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
+	"github.com/pivotal-cf/brokerapi"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 )
 
@@ -30,7 +33,7 @@ var _ = Describe("updating a service instance", func() {
 		When(updatingServiceInstance).
 			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
-				RespondsWith(http.StatusAccepted, MatchJSON(fmt.Sprintf(`{"operation":"{\"BoshTaskID\":%d,\"OperationType\":\"update\"}"}`, updateTaskID))),
+				RespondsWith(http.StatusAccepted, matchingUpdateOperationWith(updateTaskID)),
 				LogsWithServiceId("updating instance %s"),
 				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
 			)
@@ -46,4 +49,49 @@ var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanc
 
 func rawManifestWithDeploymentName(id ServiceInstanceID) string {
 	return "name: " + broker.DeploymentNameFrom(string(id))
+}
+
+func matchingUpdateOperationWith(updateTaskId int) types.GomegaMatcher {
+	return &updateOperation{
+		expected: MatchJSON(fmt.Sprintf(`{"BoshTaskID": %d, "OperationType": "update"}`, updateTaskId)),
+	}
+}
+
+type updateOperation struct {
+	expected types.GomegaMatcher
+}
+
+func (uo *updateOperation) Match(actual interface{}) (bool, error) {
+	return uo.expected.Match(asOperationData(actualBytes(actual)))
+}
+
+func (uo *updateOperation) FailureMessage(actual interface{}) (message string) {
+	return uo.expected.FailureMessage(asOperationData(actualBytes(actual)))
+}
+
+func (uo *updateOperation) NegatedFailureMessage(actual interface{}) (message string) {
+	return uo.expected.NegatedFailureMessage(asOperationData(actualBytes(actual)))
+}
+
+func asOperationData(source []byte) []byte {
+	var updateResponse brokerapi.UpdateResponse
+	err := json.Unmarshal(source, &updateResponse)
+	Expect(err).NotTo(HaveOccurred())
+
+	var operationData broker.OperationData
+	err = json.Unmarshal([]byte(updateResponse.OperationData), &operationData)
+	Expect(err).NotTo(HaveOccurred())
+	return serialized(&operationData)
+}
+
+func actualBytes(actual interface{}) []byte {
+	bytes, isBytes := actual.([]byte)
+	Expect(isBytes).To(BeTrue(), fmt.Sprintf("converting actual to string: %s", actual))
+	return bytes
+}
+
+func serialized(source *broker.OperationData) []byte {
+	bytes, err := json.Marshal(source)
+	Expect(err).NotTo(HaveOccurred())
+	return bytes
 }
