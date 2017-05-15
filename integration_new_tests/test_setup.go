@@ -7,11 +7,11 @@
 package integration_new_tests
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	. "github.com/onsi/gomega"
-	"fmt"
 )
 
 var (

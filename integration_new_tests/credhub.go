@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"github.com/pivotal-cf/on-demand-service-broker/config"
-	"github.com/pivotal-cf/on-demand-service-broker/mockcredhub"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
+	"github.com/pivotal-cf/on-demand-service-broker/mockhttp/mockcredhub"
 	"github.com/pivotal-cf/on-demand-service-broker/mockuaa"
 )
 

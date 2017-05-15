@@ -8,8 +8,8 @@ package integration_new_tests
 
 import (
 	"github.com/pivotal-cf/on-demand-service-broker/config"
-	"github.com/pivotal-cf/on-demand-service-broker/mockcfapi"
 	"github.com/pivotal-cf/on-demand-service-broker/mockhttp"
+	"github.com/pivotal-cf/on-demand-service-broker/mockhttp/mockcfapi"
 	"github.com/pivotal-cf/on-demand-service-broker/mockuaa"
 )
 
