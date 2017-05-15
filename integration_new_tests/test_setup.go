@@ -43,7 +43,7 @@ func (r Requestifier) With(credhub Credhub, serviceAdapterSetup func(*ServiceAda
 	}
 }
 
-func (ts *TestSetup) theBroker(checkResponse ResponseChecker, checkLogs LogChecker) {
+func (ts *TestSetup) theBroker(checkResponse ResponseChecker, checkLogs ...LogChecker) {
 	env := NewBrokerEnvironment(NewBosh(), NewCloudFoundry(), NewServiceAdapter(serviceAdapterPath.Path()), ts.credhub, brokerPath.Path())
 	defer env.Close()
 
@@ -53,8 +53,9 @@ func (ts *TestSetup) theBroker(checkResponse ResponseChecker, checkLogs LogCheck
 
 	response := responseTo(ts.requestifier(env))
 	checkResponse(response)
-	checkLogs(env)
-
+	for _, check := range checkLogs {
+		check(env)
+	}
 	env.Verify()
 }
 
@@ -76,6 +77,13 @@ func LogsWithServiceId(expectedMessageTemplate string) LogChecker {
 		env.Broker.HasLogged(fmt.Sprintf(expectedMessageTemplate, env.serviceInstanceID))
 	}
 }
+
+func LogsWithDeploymentName(expectedMessageTemplate string) LogChecker {
+	return func(env *BrokerEnvironment) {
+		env.Broker.HasLogged(fmt.Sprintf(expectedMessageTemplate, env.DeploymentName()))
+	}
+}
+
 func responseTo(request *http.Request) *http.Response {
 	response, err := http.DefaultClient.Do(request)
 	Expect(err).ToNot(HaveOccurred())

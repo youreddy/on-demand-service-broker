@@ -16,10 +16,10 @@ import (
 )
 
 var _ = Describe("updating a service instance", func() {
-	XIt("returns tracking data for an update operation", func() {
+	It("returns tracking data for an update operation", func() {
 		updateTaskID := rand.Int()
 		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
-			deploymentName := broker.DeploymentNameFrom(string(env.serviceInstanceID))
+			deploymentName := env.DeploymentName()
 
 			env.Bosh.HasNoTasksFor(deploymentName)
 			env.Bosh.HasManifestFor(deploymentName)
@@ -30,7 +30,8 @@ var _ = Describe("updating a service instance", func() {
 			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
 				RespondsWith(http.StatusAccepted, fmt.Sprintf(`{"operation":"{\"BoshTaskID\":%d,\"OperationType\":\"update\"}"}`, updateTaskID)),
-				Logs("foo"),
+				LogsWithServiceId("updating instance %s"),
+				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
 			)
 	})
 })

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
@@ -71,6 +72,10 @@ func (be *BrokerEnvironment) Close() {
 	be.CF.Close()
 	be.Bosh.Close()
 	be.Credhub.Close()
+}
+
+func (be *BrokerEnvironment) DeploymentName() string {
+	return broker.DeploymentNameFrom(string(be.serviceInstanceID))
 }
 
 type ServiceInstanceID string
