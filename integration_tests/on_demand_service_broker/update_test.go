@@ -17,6 +17,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	. "github.com/onsi/gomega/gstruct"
+
 	"github.com/onsi/gomega/types"
 	"github.com/pivotal-cf/brokerapi"
 	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
@@ -184,9 +186,7 @@ var _ = Describe("updating a service instance", func() {
 
 				Expect(*adapter.GenerateManifest().ReceivedPreviousManifest()).To(Equal(manifest))
 
-				updateRequestRegex := logRegexpStringWithRequestIDCapture(
-					`updating instance`,
-				)
+				updateRequestRegex := logRegexpStringWithRequestIDCapture(`updating instance`)
 
 				Eventually(runningBroker).Should(gbytes.Say(updateRequestRegex))
 				requestID := firstMatchInOutput(runningBroker, updateRequestRegex)
@@ -219,7 +219,7 @@ var _ = Describe("updating a service instance", func() {
 				adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(instanceID))
 			})
 
-			It("includes the operation data in the response", func() {
+			FIt("includes the operation data in the response", func() {
 				boshDirector.VerifyAndMock(
 					mockbosh.Tasks(deploymentName(instanceID)).RespondsWithNoTasks(),
 					mockbosh.GetDeployment(deploymentName(instanceID)).RespondsWithManifest(&manifest),
@@ -230,16 +230,15 @@ var _ = Describe("updating a service instance", func() {
 
 				Expect(updateResp.StatusCode).To(Equal(http.StatusAccepted))
 
-				operationData := operationDataFromUpdateResponse(updateResp)
-				Expect(operationData.BoshContextID).NotTo(BeEmpty())
-				Expect(*operationData).To(Equal(
-					broker.OperationData{
-						OperationType:        broker.OperationTypeUpdate,
-						BoshTaskID:           taskID,
-						BoshContextID:        operationData.BoshContextID,
-						PostDeployErrandName: "health-check",
-					},
-				))
+				actualOperationData := operationDataFromUpdateResponse(updateResp)
+				Expect(*actualOperationData).To(MatchAllFields(
+					Fields{
+						"OperationType":        Equal(broker.OperationTypeUpdate),
+						"BoshTaskID":           Equal(taskID),
+						"PlanID":               BeEmpty(),
+						"PostDeployErrandName": Equal("health-check"),
+						"BoshContextID":        Not(BeEmpty()),
+					}))
 			})
 		})
 
