@@ -12,6 +12,9 @@ import (
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 )
 
@@ -29,13 +32,14 @@ var _ = Describe("updating a service instance", func() {
 		When(updatingServiceInstance).
 			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
-				RespondsWith(http.StatusAccepted, MatchingOperation(broker.OperationTypeUpdate, updateTaskID)),
+				RespondsWith(http.StatusAccepted, OperationData(withoutErrand(broker.OperationTypeUpdate, updateTaskID))),
 				LogsWithServiceId("updating instance %s"),
 				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
 			)
 	})
 
 	XIt("runs the post-deployment errand if new plan has one", func() {
+		const postDeployErrandName = "post-deploy-errand-name"
 		updateTaskID := rand.Int()
 		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
 			deploymentName := env.DeploymentName()
@@ -48,7 +52,7 @@ var _ = Describe("updating a service instance", func() {
 		When(updatingServiceInstance).
 			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
-				RespondsWith(http.StatusAccepted, MatchingOperation(broker.OperationTypeUpdate, updateTaskID)),
+				RespondsWith(http.StatusAccepted, OperationData(withErrand(broker.OperationTypeUpdate, updateTaskID, postDeployErrandName))),
 				LogsWithServiceId("updating instance %s"),
 				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
 			)
@@ -67,4 +71,26 @@ var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanc
 
 func rawManifestWithDeploymentName(id ServiceInstanceID) string {
 	return "name: " + broker.DeploymentNameFrom(string(id))
+}
+
+func withoutErrand(opType broker.OperationType, taskId int) types.GomegaMatcher {
+	return MatchAllFields(
+		Fields{
+			"OperationType":        Equal(opType),
+			"BoshTaskID":           Equal(taskId),
+			"PlanID":               BeEmpty(),
+			"PostDeployErrandName": BeEmpty(),
+			"BoshContextID":        BeEmpty(),
+		})
+}
+
+func withErrand(opType broker.OperationType, taskId int, errandName string) types.GomegaMatcher {
+	return MatchAllFields(
+		Fields{
+			"OperationType":        Equal(opType),
+			"BoshTaskID":           Equal(taskId),
+			"PlanID":               BeEmpty(),
+			"PostDeployErrandName": Equal(errandName),
+			"BoshContextID":        Not(BeEmpty()),
+		})
 }

@@ -11,23 +11,13 @@ import (
 	"fmt"
 
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 	"github.com/pivotal-cf/brokerapi"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 )
 
-func MatchingOperation(opType broker.OperationType, taskId int) types.GomegaMatcher {
-	return &operationMatcher{
-		expected: gstruct.MatchAllFields(
-			gstruct.Fields{
-				"OperationType":        Equal(opType),
-				"BoshTaskID":           Equal(taskId),
-				"PlanID":               BeEmpty(),
-				"PostDeployErrandName": BeEmpty(),
-				"BoshContextID":        BeEmpty(),
-			}),
-	}
+func OperationData(opDataMatcher types.GomegaMatcher) types.GomegaMatcher {
+	return &operationMatcher{expected: opDataMatcher}
 }
 
 type operationMatcher struct {
