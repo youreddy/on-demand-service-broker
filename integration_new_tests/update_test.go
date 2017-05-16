@@ -34,7 +34,29 @@ var _ = Describe("updating a service instance", func() {
 				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
 			)
 	})
+
+	XIt("runs the post-deployment errand if new plan has one", func() {
+		updateTaskID := rand.Int()
+		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
+			deploymentName := env.DeploymentName()
+
+			env.Bosh.HasNoTasksFor(deploymentName)
+			env.Bosh.HasManifestFor(deploymentName)
+			env.Bosh.DeploysWithoutContextId(deploymentName, updateTaskID)
+		}
+
+		When(updatingServiceInstance).
+			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
+			theBroker(
+				RespondsWith(http.StatusAccepted, MatchingOperation(broker.OperationTypeUpdate, updateTaskID)),
+				LogsWithServiceId("updating instance %s"),
+				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
+			)
+	})
+
 })
+
+// TODO Should we verify the parameters to GenerateManifest?
 
 var updatingServiceInstance = func(env *BrokerEnvironment) *http.Request {
 	return env.Broker.UpdateServiceInstanceRequest(env.serviceInstanceID)

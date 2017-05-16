@@ -11,14 +11,22 @@ import (
 	"fmt"
 
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 	"github.com/pivotal-cf/brokerapi"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 )
 
-func MatchingOperation(opType broker.OperationType, updateTaskId int) types.GomegaMatcher {
+func MatchingOperation(opType broker.OperationType, taskId int) types.GomegaMatcher {
 	return &operationMatcher{
-		expected: MatchJSON(fmt.Sprintf(`{"BoshTaskID": %d, "OperationType": "%s"}`, updateTaskId, opType)),
+		expected: gstruct.MatchAllFields(
+			gstruct.Fields{
+				"OperationType":        Equal(opType),
+				"BoshTaskID":           Equal(taskId),
+				"PlanID":               BeEmpty(),
+				"PostDeployErrandName": BeEmpty(),
+				"BoshContextID":        BeEmpty(),
+			}),
 	}
 }
 
@@ -38,7 +46,7 @@ func (uo *operationMatcher) NegatedFailureMessage(actual interface{}) (message s
 	return uo.expected.NegatedFailureMessage(asOperationData(asBytes(actual)))
 }
 
-func asOperationData(source []byte) []byte {
+func asOperationData(source []byte) broker.OperationData {
 	var updateResponse brokerapi.UpdateResponse
 	err := json.Unmarshal(source, &updateResponse)
 	Expect(err).NotTo(HaveOccurred())
@@ -46,17 +54,11 @@ func asOperationData(source []byte) []byte {
 	var operationData broker.OperationData
 	err = json.Unmarshal([]byte(updateResponse.OperationData), &operationData)
 	Expect(err).NotTo(HaveOccurred())
-	return serialized(&operationData)
+	return operationData
 }
 
 func asBytes(actual interface{}) []byte {
 	bytes, isBytes := actual.([]byte)
 	Expect(isBytes).To(BeTrue(), fmt.Sprintf("converting actual to string: %s", actual))
-	return bytes
-}
-
-func serialized(source *broker.OperationData) []byte {
-	bytes, err := json.Marshal(source)
-	Expect(err).NotTo(HaveOccurred())
 	return bytes
 }
