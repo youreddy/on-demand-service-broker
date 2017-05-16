@@ -23,6 +23,12 @@ const (
 	boshVMDescription = `{"IPs" : ["ip.from.bosh"], "job_name": "some-instance-group"}`
 )
 
+type ManifestForDeployment func(deploymentName string) *bosh.BoshManifest
+
+func DefaultManifest(deploymentName string) *bosh.BoshManifest {
+	return &bosh.BoshManifest{Name: deploymentName}
+}
+
 type Bosh struct {
 	Director *mockhttp.Server
 	UAA      *mockuaa.ClientCredentialsServer
@@ -57,9 +63,9 @@ func (b *Bosh) Close() {
 	b.Director.Close()
 }
 
-func (b *Bosh) HasManifestFor(deploymentName string) {
+func (b *Bosh) HasManifestFor(deploymentName string, manifester ManifestForDeployment) {
 	b.Director.AppendMocks(
-		mockbosh.GetDeployment(deploymentName).RespondsWithManifest(&bosh.BoshManifest{Name: deploymentName}),
+		mockbosh.GetDeployment(deploymentName).RespondsWithManifest(manifester(deploymentName)),
 	)
 }
 
@@ -81,13 +87,13 @@ func (b *Bosh) HasNoVMsFor(deploymentName string) {
 
 func (b *Bosh) DeploysWithoutContextID(deploymentName string, taskID int) {
 	b.Director.AppendMocks(
-		mockbosh.Deploy().WithManifest(bosh.BoshManifest{Name: deploymentName}).WithoutContextID().RedirectsToTask(taskID),
+		mockbosh.Deploy().WithManifest(*DefaultManifest(deploymentName)).WithoutContextID().RedirectsToTask(taskID),
 	)
 }
 
 func (b *Bosh) DeploysWithAContextID(deploymentName string, taskID int) {
 	b.Director.AppendMocks(
-		mockbosh.Deploy().WithManifest(bosh.BoshManifest{Name: deploymentName}).WithAnyContextID().RedirectsToTask(taskID),
+		mockbosh.Deploy().WithManifest(*DefaultManifest(deploymentName)).WithAnyContextID().RedirectsToTask(taskID),
 	)
 }
 

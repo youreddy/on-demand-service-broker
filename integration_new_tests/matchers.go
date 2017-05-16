@@ -52,3 +52,23 @@ func asBytes(actual interface{}) []byte {
 	Expect(isBytes).To(BeTrue(), fmt.Sprintf("converting actual to string: %s", actual))
 	return bytes
 }
+
+func Text(stringMatcher types.GomegaMatcher) types.GomegaMatcher {
+	return &textMatcher{expected: stringMatcher}
+}
+
+type textMatcher struct {
+	expected types.GomegaMatcher
+}
+
+func (uo *textMatcher) Match(actual interface{}) (bool, error) {
+	return uo.expected.Match(string(asBytes(actual)))
+}
+
+func (uo *textMatcher) FailureMessage(actual interface{}) (message string) {
+	return uo.expected.FailureMessage(string(asBytes(actual)))
+}
+
+func (uo *textMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	return uo.expected.NegatedFailureMessage(string(asBytes(actual)))
+}

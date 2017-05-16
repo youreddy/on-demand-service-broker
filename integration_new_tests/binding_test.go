@@ -84,7 +84,7 @@ var boshConnectionFails = func(env *BrokerEnvironment) { env.Bosh.Close() }
 var boshHasVMsForServiceInstance = func(env *BrokerEnvironment) {
 	deploymentName := broker.DeploymentNameFrom(string(env.serviceInstanceID))
 	env.Bosh.HasVMsFor(deploymentName)
-	env.Bosh.HasManifestFor(deploymentName)
+	env.Bosh.HasManifestFor(deploymentName, DefaultManifest)
 }
 var boshHasNoVMs = func(env *BrokerEnvironment) {
 	env.Bosh.HasNoVMsFor(broker.DeploymentNameFrom(string(env.serviceInstanceID)))

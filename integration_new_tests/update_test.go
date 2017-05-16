@@ -17,16 +17,20 @@ import (
 	"github.com/onsi/gomega/types"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
+	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
 
 const (
-	postDeployPlanName            = "post-deploy-plan-name"
-	postDeployErrandName          = "post-deploy-errand-name"
-	withPostDeployErrandPlanID    = "post-deploy-errand-id"
-	withoutPostDeployErrandPlanID = defaultPlanID
-	secondDefaultPlanID           = "second-default-plan-id"
+	expectedDeployedMessageTemplate = "Deployed. Operation: update, BoshTaskID: %d, DeploymentName: %%s, PlanID: %s"
+	postDeployPlanName              = "post-deploy-plan-name"
+	postDeployErrandName            = "post-deploy-errand-name"
+	withPostDeployErrandPlanID      = "post-deploy-errand-id"
+	withoutPostDeployErrandPlanID   = defaultPlanID
+	secondDefaultPlanID             = "second-default-plan-id"
 )
+
+var manifestProperties = map[string]interface{}{"foo": "bar"}
 
 var _ = Describe("updating a service instance", func() {
 	It("returns tracking data for an update operation", func() {
@@ -34,7 +38,7 @@ var _ = Describe("updating a service instance", func() {
 		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
 			deploymentName := env.DeploymentName()
 			env.Bosh.HasNoTasksFor(deploymentName)
-			env.Bosh.HasManifestFor(deploymentName)
+			env.Bosh.HasManifestFor(deploymentName, DefaultManifest)
 
 			env.Bosh.DeploysWithoutContextID(deploymentName, updateTaskID)
 		}
@@ -44,7 +48,7 @@ var _ = Describe("updating a service instance", func() {
 			theBroker(
 				RespondsWith(http.StatusAccepted, OperationData(withoutErrand(broker.OperationTypeUpdate, updateTaskID))),
 				LogsWithServiceId("updating instance %s"),
-				LogsWithDeploymentName(fmt.Sprintf("Deployed. Operation: update, BoshTaskID: %d, DeploymentName: %%s, PlanID: %s", updateTaskID, secondDefaultPlanID)),
+				LogsWithDeploymentName(fmt.Sprintf(expectedDeployedMessageTemplate, updateTaskID, secondDefaultPlanID)),
 			)
 	})
 
@@ -53,7 +57,7 @@ var _ = Describe("updating a service instance", func() {
 		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
 			deploymentName := env.DeploymentName()
 			env.Bosh.HasNoTasksFor(deploymentName)
-			env.Bosh.HasManifestFor(deploymentName)
+			env.Bosh.HasManifestFor(deploymentName, DefaultManifest)
 
 			env.Bosh.DeploysWithAContextID(deploymentName, updateTaskID)
 		}
@@ -63,7 +67,7 @@ var _ = Describe("updating a service instance", func() {
 			theBroker(
 				RespondsWith(http.StatusAccepted, OperationData(withErrand(broker.OperationTypeUpdate, updateTaskID, postDeployErrandName))),
 				LogsWithServiceId("updating instance %s"),
-				LogsWithDeploymentName(fmt.Sprintf("Deployed. Operation: update, BoshTaskID: %d, DeploymentName: %%s, PlanID: %s", updateTaskID, withPostDeployErrandPlanID)),
+				LogsWithDeploymentName(fmt.Sprintf(expectedDeployedMessageTemplate, updateTaskID, withPostDeployErrandPlanID)),
 			)
 	})
 
@@ -72,7 +76,7 @@ var _ = Describe("updating a service instance", func() {
 		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
 			deploymentName := env.DeploymentName()
 			env.Bosh.HasNoTasksFor(deploymentName)
-			env.Bosh.HasManifestFor(deploymentName)
+			env.Bosh.HasManifestFor(deploymentName, DefaultManifest)
 
 			env.Bosh.DeploysWithoutContextID(deploymentName, updateTaskID)
 		}
@@ -82,13 +86,24 @@ var _ = Describe("updating a service instance", func() {
 			theBroker(
 				RespondsWith(http.StatusAccepted, OperationData(withoutErrand(broker.OperationTypeUpdate, updateTaskID))),
 				LogsWithServiceId("updating instance %s"),
-				LogsWithDeploymentName(fmt.Sprintf("Deployed. Operation: update, BoshTaskID: %d, DeploymentName: %%s, PlanID: %s", updateTaskID, withoutPostDeployErrandPlanID)),
+				LogsWithDeploymentName(fmt.Sprintf(expectedDeployedMessageTemplate, updateTaskID, withoutPostDeployErrandPlanID)),
 			)
 	})
 
-})
+	It("reports a pending changes disabled error when cf_user_triggered_upgrades is disabled", func() {
+		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
+			deploymentName := env.DeploymentName()
+			env.Bosh.HasNoTasksFor(deploymentName)
+			env.Bosh.HasManifestFor(deploymentName, manifestWithProperties)
+		}
 
-// TODO Should we verify the parameters to GenerateManifest?
+		When(updatingPlan(defaultPlanID, secondDefaultPlanID)).
+			With(secondDefaultPlanConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
+			theBroker(
+				RespondsWith(http.StatusInternalServerError, Text(ContainSubstring(broker.ApplyChangesDisabledMessage))),
+			)
+	})
+})
 
 func updatingPlan(oldPlanID string, newPlanID string) func(env *BrokerEnvironment) *http.Request {
 	return func(env *BrokerEnvironment) *http.Request {
@@ -102,6 +117,13 @@ var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanc
 
 func rawManifestWithDeploymentName(id ServiceInstanceID) string {
 	return "name: " + broker.DeploymentNameFrom(string(id))
+}
+
+func manifestWithProperties(deploymentName string) *bosh.BoshManifest {
+	return &bosh.BoshManifest{
+		Name:       deploymentName,
+		Properties: manifestProperties,
+	}
 }
 
 func secondDefaultPlanConfigured(source *config.Config) *config.Config {
