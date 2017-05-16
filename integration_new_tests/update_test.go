@@ -16,6 +16,14 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
+	"github.com/pivotal-cf/on-demand-service-broker/config"
+	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
+)
+
+const (
+	postDeployPlanName     = "post-deploy-plan-name"
+	postDeployErrandName   = "post-deploy-errand-name"
+	postDeployErrandPlanID = "post-deploy-errand-id"
 )
 
 var _ = Describe("updating a service instance", func() {
@@ -26,11 +34,11 @@ var _ = Describe("updating a service instance", func() {
 
 			env.Bosh.HasNoTasksFor(deploymentName)
 			env.Bosh.HasManifestFor(deploymentName)
-			env.Bosh.DeploysWithoutContextId(deploymentName, updateTaskID)
+			env.Bosh.DeploysWithoutContextID(deploymentName, updateTaskID)
 		}
 
 		When(updatingServiceInstance).
-			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
+			With(noErrandsConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
 				RespondsWith(http.StatusAccepted, OperationData(withoutErrand(broker.OperationTypeUpdate, updateTaskID))),
 				LogsWithServiceId("updating instance %s"),
@@ -38,19 +46,18 @@ var _ = Describe("updating a service instance", func() {
 			)
 	})
 
-	XIt("runs the post-deployment errand if new plan has one", func() {
-		const postDeployErrandName = "post-deploy-errand-name"
+	It("runs the post-deployment errand if new plan has one", func() {
 		updateTaskID := rand.Int()
 		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
 			deploymentName := env.DeploymentName()
 
 			env.Bosh.HasNoTasksFor(deploymentName)
 			env.Bosh.HasManifestFor(deploymentName)
-			env.Bosh.DeploysWithoutContextId(deploymentName, updateTaskID)
+			env.Bosh.DeploysWithAContextID(deploymentName, updateTaskID)
 		}
 
-		When(updatingServiceInstance).
-			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
+		When(updatingPlanTo(postDeployErrandPlanID)).
+			With(postDeployErrandConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
 				RespondsWith(http.StatusAccepted, OperationData(withErrand(broker.OperationTypeUpdate, updateTaskID, postDeployErrandName))),
 				LogsWithServiceId("updating instance %s"),
@@ -62,15 +69,43 @@ var _ = Describe("updating a service instance", func() {
 
 // TODO Should we verify the parameters to GenerateManifest?
 
-var updatingServiceInstance = func(env *BrokerEnvironment) *http.Request {
-	return env.Broker.UpdateServiceInstanceRequest(env.serviceInstanceID)
+var noErrandsConfigured = DefaultConfig
+
+func updatingPlanTo(newPlanID string) func(env *BrokerEnvironment) *http.Request {
+	return func(env *BrokerEnvironment) *http.Request {
+		return env.Broker.UpdateServiceInstanceRequest(env.serviceInstanceID, newPlanID)
+	}
 }
+
+var updatingServiceInstance = updatingPlanTo(defaultPlanID)
+
 var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanceID) {
 	sa.adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(id))
 }
 
 func rawManifestWithDeploymentName(id ServiceInstanceID) string {
 	return "name: " + broker.DeploymentNameFrom(string(id))
+}
+
+func postDeployErrandConfigured(source *config.Config) *config.Config {
+	source.ServiceCatalog.Plans = append(source.ServiceCatalog.Plans, config.Plan{
+		Name: postDeployPlanName,
+		ID:   postDeployErrandPlanID,
+		InstanceGroups: []serviceadapter.InstanceGroup{
+			{
+				Name:      "instance-group-name",
+				VMType:    "post-deploy-errand-vm-type",
+				Instances: 1,
+				Networks:  []string{"net1"},
+				AZs:       []string{"az1"},
+			},
+		},
+		LifecycleErrands: &config.LifecycleErrands{
+			PostDeploy: postDeployErrandName,
+		},
+	})
+
+	return source
 }
 
 func withoutErrand(opType broker.OperationType, taskId int) types.GomegaMatcher {

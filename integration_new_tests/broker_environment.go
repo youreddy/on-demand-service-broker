@@ -19,7 +19,7 @@ const (
 	bindingGUIDfromCF = "Gjklh45ljkhn"
 
 	theServiceID  = "the-service-id"
-	basePlanID    = "base-plan-id"
+	defaultPlanID = "base-plan-id"
 	appGUIDfromCF = "app-guid-from-cf"
 )
 
@@ -43,10 +43,10 @@ func NewBrokerEnvironment(bosh *Bosh, cf *CloudFoundry, serviceAdapter *ServiceA
 	}
 }
 
-func (be *BrokerEnvironment) Start() {
+func (be *BrokerEnvironment) Start(updatedConfig ConfigUpdater) {
 	be.CF.RespondsToInitialChecks()
 	be.Bosh.RespondsToInitialChecks()
-	be.Broker.Start(be.Configuration())
+	be.Broker.Start(updatedConfig(be.Configuration()))
 }
 
 func (be *BrokerEnvironment) Configuration() *config.Config {
@@ -86,16 +86,15 @@ func AServiceInstanceID() ServiceInstanceID {
 
 func theServiceOffering() config.ServiceOffering {
 	return config.ServiceOffering{
-
 		Plans: []config.Plan{
 			{
-				ID: basePlanID,
+				ID: defaultPlanID,
 				InstanceGroups: []serviceadapter.InstanceGroup{
 					{
-						VMType: "the-vm-type",
-						Name: "the-instance-group",
+						VMType:    "the-vm-type",
+						Name:      "the-instance-group",
 						Instances: 1,
-						AZs: []string{ "the-az" },
+						AZs:       []string{"the-az"},
 					},
 				},
 			},
@@ -106,7 +105,7 @@ func theServiceOffering() config.ServiceOffering {
 func theServiceDeployment() config.ServiceDeployment {
 	return config.ServiceDeployment{
 		Stemcell: serviceadapter.Stemcell{
-			OS: "ubuntu-trusty",
+			OS:      "ubuntu-trusty",
 			Version: "10.0.01",
 		},
 	}

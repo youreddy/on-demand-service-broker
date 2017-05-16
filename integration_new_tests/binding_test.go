@@ -23,7 +23,7 @@ import (
 var _ = Describe("binding service instances", func() {
 	It("binds a service to an application instance", func() {
 		When(creatingNewBinding).
-			With(NoCredhub, serviceAdapterReturnsBinding, boshHasVMsForServiceInstance).
+			With(DefaultConfig, NoCredhub, serviceAdapterReturnsBinding, boshHasVMsForServiceInstance).
 			theBroker(
 				RespondsWith(http.StatusCreated, MatchJSON(BindingResponse)),
 				Logs(fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF)))
@@ -37,7 +37,7 @@ var _ = Describe("binding service instances", func() {
 		}
 
 		When(creatingNewBinding).
-			With(aCredhub, serviceAdapterReturnsBinding, boshHasDeploymentWithCredhub).
+			With(DefaultConfig, aCredhub, serviceAdapterReturnsBinding, boshHasDeploymentWithCredhub).
 			theBroker(
 				RespondsWith(http.StatusCreated, MatchJSON(BindingResponse)),
 				Logs(fmt.Sprintf("create binding with ID %s", bindingGUIDfromCF)),
@@ -51,7 +51,7 @@ var _ = Describe("binding service instances", func() {
 		}
 
 		When(creatingNewBinding).
-			With(NoCredhub, serviceAdapterFails, boshHasVMsForServiceInstance).
+			With(DefaultConfig, NoCredhub, serviceAdapterFails, boshHasVMsForServiceInstance).
 			theBroker(
 				RespondsWith(http.StatusConflict, errorBody(serviceadapter.BindingAlreadyExistsMessage)),
 				Logs(stderrMessage),
@@ -60,7 +60,7 @@ var _ = Describe("binding service instances", func() {
 
 	It("fails when bosh is unreachable", func() {
 		When(creatingNewBinding).
-			With(NoCredhub, noServiceAdapter, boshConnectionFails).
+			With(DefaultConfig, NoCredhub, noServiceAdapter, boshConnectionFails).
 			theBroker(
 				RespondsWith(http.StatusInternalServerError, errorBody("Currently unable to bind service instance, please try again later")),
 				Logs(boshdirector.UnreachableMessage),
@@ -69,7 +69,7 @@ var _ = Describe("binding service instances", func() {
 
 	It("fails when bosh deployment doesn't exist", func() {
 		When(creatingNewBinding).
-			With(NoCredhub, noServiceAdapter, boshHasNoVMs).
+			With(DefaultConfig, NoCredhub, noServiceAdapter, boshHasNoVMs).
 			theBroker(
 				RespondsWith(http.StatusNotFound, errorBody("instance does not exist")),
 				LogsWithServiceId("instance %s, not found"),

@@ -13,6 +13,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
+	"github.com/pivotal-cf/on-demand-service-broker/config"
 )
 
 var (
@@ -23,24 +24,29 @@ var (
 type Requestifier func(*BrokerEnvironment) *http.Request
 type ResponseChecker func(*http.Response)
 type LogChecker func(*BrokerEnvironment)
+type ConfigUpdater func(config *config.Config) *config.Config
+
+func DefaultConfig(source *config.Config) *config.Config { return source }
 
 type TestSetup struct {
 	credhub             Credhub
 	serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID)
 	setup               func(*BrokerEnvironment)
 	requestifier        Requestifier
+	updatedConfig       ConfigUpdater
 }
 
 func When(requestifier Requestifier) Requestifier {
 	return requestifier
 }
 
-func (r Requestifier) With(credhub Credhub, serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID), setup func(*BrokerEnvironment)) *TestSetup {
+func (r Requestifier) With(updatedConfig ConfigUpdater, credhub Credhub, serviceAdapterSetup func(*ServiceAdapter, ServiceInstanceID), setup func(*BrokerEnvironment)) *TestSetup {
 	return &TestSetup{
 		credhub:             credhub,
 		serviceAdapterSetup: serviceAdapterSetup,
 		setup:               setup,
 		requestifier:        r,
+		updatedConfig:       updatedConfig,
 	}
 }
 
@@ -49,7 +55,7 @@ func (ts *TestSetup) theBroker(checkResponse ResponseChecker, checkLogs ...LogCh
 	defer env.Close()
 
 	ts.serviceAdapterSetup(env.ServiceAdapter, env.serviceInstanceID)
-	env.Start()
+	env.Start(ts.updatedConfig)
 	ts.setup(env)
 
 	response := responseTo(ts.requestifier(env))
