@@ -29,7 +29,7 @@ var _ = Describe("updating a service instance", func() {
 		When(updatingServiceInstance).
 			With(NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
-				RespondsWith(http.StatusAccepted, matchingUpdateOperationWith(updateTaskID)),
+				RespondsWith(http.StatusAccepted, MatchingOperation(broker.OperationTypeUpdate, updateTaskID)),
 				LogsWithServiceId("updating instance %s"),
 				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
 			)
@@ -46,4 +46,3 @@ var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanc
 func rawManifestWithDeploymentName(id ServiceInstanceID) string {
 	return "name: " + broker.DeploymentNameFrom(string(id))
 }
-

@@ -16,26 +16,26 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/broker"
 )
 
-func matchingUpdateOperationWith(updateTaskId int) types.GomegaMatcher {
-	return &updateOperationMatcher{
-		expected: MatchJSON(fmt.Sprintf(`{"BoshTaskID": %d, "OperationType": "update"}`, updateTaskId)),
+func MatchingOperation(opType broker.OperationType, updateTaskId int) types.GomegaMatcher {
+	return &operationMatcher{
+		expected: MatchJSON(fmt.Sprintf(`{"BoshTaskID": %d, "OperationType": "%s"}`, updateTaskId, opType)),
 	}
 }
 
-type updateOperationMatcher struct {
+type operationMatcher struct {
 	expected types.GomegaMatcher
 }
 
-func (uo *updateOperationMatcher) Match(actual interface{}) (bool, error) {
-	return uo.expected.Match(asOperationData(actualBytes(actual)))
+func (uo *operationMatcher) Match(actual interface{}) (bool, error) {
+	return uo.expected.Match(asOperationData(asBytes(actual)))
 }
 
-func (uo *updateOperationMatcher) FailureMessage(actual interface{}) (message string) {
-	return uo.expected.FailureMessage(asOperationData(actualBytes(actual)))
+func (uo *operationMatcher) FailureMessage(actual interface{}) (message string) {
+	return uo.expected.FailureMessage(asOperationData(asBytes(actual)))
 }
 
-func (uo *updateOperationMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return uo.expected.NegatedFailureMessage(asOperationData(actualBytes(actual)))
+func (uo *operationMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	return uo.expected.NegatedFailureMessage(asOperationData(asBytes(actual)))
 }
 
 func asOperationData(source []byte) []byte {
@@ -49,7 +49,7 @@ func asOperationData(source []byte) []byte {
 	return serialized(&operationData)
 }
 
-func actualBytes(actual interface{}) []byte {
+func asBytes(actual interface{}) []byte {
 	bytes, isBytes := actual.([]byte)
 	Expect(isBytes).To(BeTrue(), fmt.Sprintf("converting actual to string: %s", actual))
 	return bytes
