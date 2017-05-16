@@ -13,6 +13,10 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
 )
 
+const (
+	DeployedMessageTemplate = "Deployed. Operation: %s, BoshTaskID: %d, DeploymentName: %s, PlanID: %s"
+)
+
 //go:generate counterfeiter -o fakes/fake_bosh_client.go . BoshClient
 type BoshClient interface {
 	Deploy(manifest []byte, contextID string, logger *log.Logger) (int, error)
@@ -159,7 +163,7 @@ func (d deployer) doDeploy(
 	if err != nil {
 		return 0, nil, fmt.Errorf("error deploying instance: %s\n", err)
 	}
-	logger.Printf("Bosh task ID for %s deployment %s is %d\n", operationType, deploymentName, boshTaskID)
+	logger.Printf(DeployedMessageTemplate, operationType, boshTaskID, deploymentName, planID)
 
 	return boshTaskID, manifest, nil
 }

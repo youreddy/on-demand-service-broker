@@ -21,9 +21,11 @@ import (
 )
 
 const (
-	postDeployPlanName         = "post-deploy-plan-name"
-	postDeployErrandName       = "post-deploy-errand-name"
-	withPostDeployErrandPlanID = "post-deploy-errand-id"
+	postDeployPlanName            = "post-deploy-plan-name"
+	postDeployErrandName          = "post-deploy-errand-name"
+	withPostDeployErrandPlanID    = "post-deploy-errand-id"
+	withoutPostDeployErrandPlanID = defaultPlanID
+	secondDefaultPlanID           = "second-default-plan-id"
 )
 
 var _ = Describe("updating a service instance", func() {
@@ -31,18 +33,18 @@ var _ = Describe("updating a service instance", func() {
 		updateTaskID := rand.Int()
 		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
 			deploymentName := env.DeploymentName()
-
 			env.Bosh.HasNoTasksFor(deploymentName)
 			env.Bosh.HasManifestFor(deploymentName)
+
 			env.Bosh.DeploysWithoutContextID(deploymentName, updateTaskID)
 		}
 
-		When(updatingServiceInstance).
-			With(noErrandsConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
+		When(updatingPlan(defaultPlanID, secondDefaultPlanID)).
+			With(secondDefaultPlanConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
 				RespondsWith(http.StatusAccepted, OperationData(withoutErrand(broker.OperationTypeUpdate, updateTaskID))),
 				LogsWithServiceId("updating instance %s"),
-				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
+				LogsWithDeploymentName(fmt.Sprintf("Deployed. Operation: update, BoshTaskID: %d, DeploymentName: %%s, PlanID: %s", updateTaskID, secondDefaultPlanID)),
 			)
 	})
 
@@ -50,18 +52,18 @@ var _ = Describe("updating a service instance", func() {
 		updateTaskID := rand.Int()
 		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
 			deploymentName := env.DeploymentName()
-
 			env.Bosh.HasNoTasksFor(deploymentName)
 			env.Bosh.HasManifestFor(deploymentName)
+
 			env.Bosh.DeploysWithAContextID(deploymentName, updateTaskID)
 		}
 
-		When(updatingPlanTo(withoutPostDeployErrandPlanID, withPostDeployErrandPlanID)).
+		When(updatingPlan(withoutPostDeployErrandPlanID, withPostDeployErrandPlanID)).
 			With(postDeployErrandConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
 				RespondsWith(http.StatusAccepted, OperationData(withErrand(broker.OperationTypeUpdate, updateTaskID, postDeployErrandName))),
 				LogsWithServiceId("updating instance %s"),
-				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
+				LogsWithDeploymentName(fmt.Sprintf("Deployed. Operation: update, BoshTaskID: %d, DeploymentName: %%s, PlanID: %s", updateTaskID, withPostDeployErrandPlanID)),
 			)
 	})
 
@@ -69,18 +71,18 @@ var _ = Describe("updating a service instance", func() {
 		updateTaskID := rand.Int()
 		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
 			deploymentName := env.DeploymentName()
-
 			env.Bosh.HasNoTasksFor(deploymentName)
 			env.Bosh.HasManifestFor(deploymentName)
+
 			env.Bosh.DeploysWithoutContextID(deploymentName, updateTaskID)
 		}
 
-		When(updatingPlanTo(withPostDeployErrandPlanID, withoutPostDeployErrandPlanID)).
+		When(updatingPlan(withPostDeployErrandPlanID, withoutPostDeployErrandPlanID)).
 			With(postDeployErrandConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
 				RespondsWith(http.StatusAccepted, OperationData(withoutErrand(broker.OperationTypeUpdate, updateTaskID))),
 				LogsWithServiceId("updating instance %s"),
-				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
+				LogsWithDeploymentName(fmt.Sprintf("Deployed. Operation: update, BoshTaskID: %d, DeploymentName: %%s, PlanID: %s", updateTaskID, withoutPostDeployErrandPlanID)),
 			)
 	})
 
@@ -88,16 +90,11 @@ var _ = Describe("updating a service instance", func() {
 
 // TODO Should we verify the parameters to GenerateManifest?
 
-var noErrandsConfigured = DefaultConfig
-var withoutPostDeployErrandPlanID = defaultPlanID
-
-func updatingPlanTo(oldPlanID string, newPlanID string) func(env *BrokerEnvironment) *http.Request {
+func updatingPlan(oldPlanID string, newPlanID string) func(env *BrokerEnvironment) *http.Request {
 	return func(env *BrokerEnvironment) *http.Request {
 		return env.Broker.UpdateServiceInstanceRequest(env.serviceInstanceID, oldPlanID, newPlanID)
 	}
 }
-
-var updatingServiceInstance = updatingPlanTo(withoutPostDeployErrandPlanID, withoutPostDeployErrandPlanID)
 
 var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanceID) {
 	sa.adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(id))
@@ -105,6 +102,22 @@ var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanc
 
 func rawManifestWithDeploymentName(id ServiceInstanceID) string {
 	return "name: " + broker.DeploymentNameFrom(string(id))
+}
+
+func secondDefaultPlanConfigured(source *config.Config) *config.Config {
+	source.ServiceCatalog.Plans = append(source.ServiceCatalog.Plans, config.Plan{
+		ID: secondDefaultPlanID,
+		InstanceGroups: []serviceadapter.InstanceGroup{
+			{
+				VMType:    "the-vm-type",
+				Name:      "the-instance-group",
+				Instances: 1,
+				AZs:       []string{"the-az"},
+			},
+		},
+	})
+
+	return source
 }
 
 func postDeployErrandConfigured(source *config.Config) *config.Config {

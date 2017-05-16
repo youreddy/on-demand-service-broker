@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
+	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-service-broker/task"
 	"github.com/pivotal-cf/on-demand-service-broker/task/fakes"
 )
@@ -148,7 +149,7 @@ var _ = Describe("Deployer", func() {
 			It("logs the bosh task ID returned by the director", func() {
 				Expect(deployError).ToNot(HaveOccurred())
 				Expect(returnedTaskID).To(Equal(42))
-				Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf("Bosh task ID for create deployment %s is %d", deploymentName, boshTaskID)))
+				Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf(task.DeployedMessageTemplate, broker.OperationTypeCreate, boshTaskID, deploymentName, planID)))
 			})
 		})
 
@@ -344,7 +345,7 @@ var _ = Describe("Deployer", func() {
 			})
 
 			It("logs the bosh task ID returned by the director", func() {
-				Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf("Bosh task ID for upgrade deployment %s is %d", deploymentName, boshTaskID)))
+				Expect(logBuffer.String()).To(ContainSubstring(fmt.Sprintf(task.DeployedMessageTemplate, broker.OperationTypeUpgrade, boshTaskID, deploymentName, planID)))
 			})
 		})
 
