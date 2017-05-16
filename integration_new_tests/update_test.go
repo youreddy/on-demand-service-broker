@@ -100,9 +100,24 @@ var _ = Describe("updating a service instance", func() {
 		When(updatingPlan(defaultPlanID, secondDefaultPlanID)).
 			With(secondDefaultPlanConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
-				RespondsWith(http.StatusInternalServerError, Text(ContainSubstring(broker.ApplyChangesDisabledMessage))),
+				RespondsWith(http.StatusInternalServerError, ErrorResponse(ContainSubstring(broker.ApplyChangesDisabledMessage))),
 			)
 	})
+
+	It("reports a pending changes error when cf_user_triggered_upgrades is enabled", func() {
+		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
+			deploymentName := env.DeploymentName()
+			env.Bosh.HasNoTasksFor(deploymentName)
+			env.Bosh.HasManifestFor(deploymentName, manifestWithProperties)
+		}
+
+		When(updatingPlan(defaultPlanID, secondDefaultPlanID)).
+			With(configs(userTriggerUpgradesEnabled, secondDefaultPlanConfigured), NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
+			theBroker(
+				RespondsWith(http.StatusInternalServerError, ErrorResponse(ContainSubstring(broker.PendingChangesErrorMessage))),
+			)
+	})
+
 })
 
 func updatingPlan(oldPlanID string, newPlanID string) func(env *BrokerEnvironment) *http.Request {
@@ -124,6 +139,21 @@ func manifestWithProperties(deploymentName string) *bosh.BoshManifest {
 		Name:       deploymentName,
 		Properties: manifestProperties,
 	}
+}
+
+func configs(updaters ...ConfigUpdater) ConfigUpdater {
+	return func(source *config.Config) *config.Config {
+		var result  = source
+		for _, updater := range updaters {
+			result = updater(result)
+		}
+		return result
+	}
+}
+
+func userTriggerUpgradesEnabled(source *config.Config) *config.Config {
+	source.Features.UserTriggeredUpgrades = true
+	return source
 }
 
 func secondDefaultPlanConfigured(source *config.Config) *config.Config {

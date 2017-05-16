@@ -47,28 +47,36 @@ func asOperationData(source []byte) broker.OperationData {
 	return operationData
 }
 
+func ErrorResponse(stringMatcher types.GomegaMatcher) types.GomegaMatcher {
+	return &errorResponseMatcher{expected: stringMatcher}
+}
+
+type errorResponseMatcher struct {
+	expected types.GomegaMatcher
+}
+
+func (uo *errorResponseMatcher) Match(actual interface{}) (bool, error) {
+	return uo.expected.Match(asErrorResponse(asBytes(actual)))
+}
+
+func (uo *errorResponseMatcher) FailureMessage(actual interface{}) (message string) {
+	return uo.expected.FailureMessage(asErrorResponse(asBytes(actual)))
+}
+
+func (uo *errorResponseMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	return uo.expected.NegatedFailureMessage(asErrorResponse(asBytes(actual)))
+}
+
+func asErrorResponse(source []byte) string {
+	var errorResponse brokerapi.ErrorResponse
+	err := json.Unmarshal(source, &errorResponse)
+	Expect(err).NotTo(HaveOccurred())
+
+	return errorResponse.Description
+}
+
 func asBytes(actual interface{}) []byte {
 	bytes, isBytes := actual.([]byte)
 	Expect(isBytes).To(BeTrue(), fmt.Sprintf("converting actual to string: %s", actual))
 	return bytes
-}
-
-func Text(stringMatcher types.GomegaMatcher) types.GomegaMatcher {
-	return &textMatcher{expected: stringMatcher}
-}
-
-type textMatcher struct {
-	expected types.GomegaMatcher
-}
-
-func (uo *textMatcher) Match(actual interface{}) (bool, error) {
-	return uo.expected.Match(string(asBytes(actual)))
-}
-
-func (uo *textMatcher) FailureMessage(actual interface{}) (message string) {
-	return uo.expected.FailureMessage(string(asBytes(actual)))
-}
-
-func (uo *textMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return uo.expected.NegatedFailureMessage(string(asBytes(actual)))
 }
