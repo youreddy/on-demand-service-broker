@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	postDeployPlanName     = "post-deploy-plan-name"
-	postDeployErrandName   = "post-deploy-errand-name"
-	postDeployErrandPlanID = "post-deploy-errand-id"
+	postDeployPlanName         = "post-deploy-plan-name"
+	postDeployErrandName       = "post-deploy-errand-name"
+	withPostDeployErrandPlanID = "post-deploy-errand-id"
 )
 
 var _ = Describe("updating a service instance", func() {
@@ -56,10 +56,29 @@ var _ = Describe("updating a service instance", func() {
 			env.Bosh.DeploysWithAContextID(deploymentName, updateTaskID)
 		}
 
-		When(updatingPlanTo(postDeployErrandPlanID)).
+		When(updatingPlanTo(withoutPostDeployErrandPlanID, withPostDeployErrandPlanID)).
 			With(postDeployErrandConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
 			theBroker(
 				RespondsWith(http.StatusAccepted, OperationData(withErrand(broker.OperationTypeUpdate, updateTaskID, postDeployErrandName))),
+				LogsWithServiceId("updating instance %s"),
+				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
+			)
+	})
+
+	It("does not run a post-deployment errand if new plan does not have one", func() {
+		updateTaskID := rand.Int()
+		boshDeploysUpdatedManifest := func(env *BrokerEnvironment) {
+			deploymentName := env.DeploymentName()
+
+			env.Bosh.HasNoTasksFor(deploymentName)
+			env.Bosh.HasManifestFor(deploymentName)
+			env.Bosh.DeploysWithoutContextID(deploymentName, updateTaskID)
+		}
+
+		When(updatingPlanTo(withPostDeployErrandPlanID, withoutPostDeployErrandPlanID)).
+			With(postDeployErrandConfigured, NoCredhub, serviceAdapterGeneratesManifest, boshDeploysUpdatedManifest).
+			theBroker(
+				RespondsWith(http.StatusAccepted, OperationData(withoutErrand(broker.OperationTypeUpdate, updateTaskID))),
 				LogsWithServiceId("updating instance %s"),
 				LogsWithDeploymentName(fmt.Sprintf("Bosh task ID for update deployment %%s is %d", updateTaskID)),
 			)
@@ -70,14 +89,15 @@ var _ = Describe("updating a service instance", func() {
 // TODO Should we verify the parameters to GenerateManifest?
 
 var noErrandsConfigured = DefaultConfig
+var withoutPostDeployErrandPlanID = defaultPlanID
 
-func updatingPlanTo(newPlanID string) func(env *BrokerEnvironment) *http.Request {
+func updatingPlanTo(oldPlanID string, newPlanID string) func(env *BrokerEnvironment) *http.Request {
 	return func(env *BrokerEnvironment) *http.Request {
-		return env.Broker.UpdateServiceInstanceRequest(env.serviceInstanceID, newPlanID)
+		return env.Broker.UpdateServiceInstanceRequest(env.serviceInstanceID, oldPlanID, newPlanID)
 	}
 }
 
-var updatingServiceInstance = updatingPlanTo(defaultPlanID)
+var updatingServiceInstance = updatingPlanTo(withoutPostDeployErrandPlanID, withoutPostDeployErrandPlanID)
 
 var serviceAdapterGeneratesManifest = func(sa *ServiceAdapter, id ServiceInstanceID) {
 	sa.adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(id))
@@ -90,7 +110,7 @@ func rawManifestWithDeploymentName(id ServiceInstanceID) string {
 func postDeployErrandConfigured(source *config.Config) *config.Config {
 	source.ServiceCatalog.Plans = append(source.ServiceCatalog.Plans, config.Plan{
 		Name: postDeployPlanName,
-		ID:   postDeployErrandPlanID,
+		ID:   withPostDeployErrandPlanID,
 		InstanceGroups: []serviceadapter.InstanceGroup{
 			{
 				Name:      "instance-group-name",

@@ -105,7 +105,7 @@ func (b *Broker) CreateBindingRequest(serviceInstanceID ServiceInstanceID) *http
 	return withBasicAuth(bindingReq)
 }
 
-func (b *Broker) UpdateServiceInstanceRequest(serviceInstanceID ServiceInstanceID, newPlanID string) *http.Request {
+func (b *Broker) UpdateServiceInstanceRequest(serviceInstanceID ServiceInstanceID, oldPlanID string, newPlanID string) *http.Request {
 	reqJson := fmt.Sprintf(`{
 		"plan_id" : "%s",
 		"service_id":  "%s",
@@ -117,7 +117,7 @@ func (b *Broker) UpdateServiceInstanceRequest(serviceInstanceID ServiceInstanceI
 			"space_id":        "%s"
 		}
 	}`,
-		newPlanID, theServiceID, organizationGUID, theServiceID, defaultPlanID, spaceGUID,
+		newPlanID, theServiceID, organizationGUID, theServiceID, oldPlanID, spaceGUID,
 	)
 
 	updateReq, err := http.NewRequest(

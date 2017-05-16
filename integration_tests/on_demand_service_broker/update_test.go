@@ -219,7 +219,7 @@ var _ = Describe("updating a service instance", func() {
 				adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(instanceID))
 			})
 
-			FIt("includes the operation data in the response", func() {
+			It("includes the operation data in the response", func() {
 				boshDirector.VerifyAndMock(
 					mockbosh.Tasks(deploymentName(instanceID)).RespondsWithNoTasks(),
 					mockbosh.GetDeployment(deploymentName(instanceID)).RespondsWithManifest(&manifest),
