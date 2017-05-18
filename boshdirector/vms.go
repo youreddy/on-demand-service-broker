@@ -10,35 +10,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 )
-
-type Probe func() (bool, error)
-
-type Poller interface {
-	PollUntil(Probe) error
-}
-
-type SleepingPoller struct {
-	pollingInterval time.Duration
-}
-
-func (p *SleepingPoller) PollUntil(probe Probe) error {
-	for {
-		done, err := probe()
-		if err != nil {
-			return err
-		}
-
-		if done {
-			return nil
-		}
-
-		time.Sleep(p.pollingInterval)
-	}
-}
 
 func (c *Client) VMs(name string, logger *log.Logger) (bosh.BoshVMs, error) {
 	logger.Printf("retrieving VMs for deployment %s from bosh\n", name)
@@ -56,9 +30,7 @@ func (c *Client) VMs(name string, logger *log.Logger) (bosh.BoshVMs, error) {
 		return errs(err)
 	}
 
-	poller := &SleepingPoller{pollingInterval: c.PollingInterval}
-
-	err = poller.PollUntil(
+	err = c.poller.PollUntil(
 		func() (bool, error) { return c.checkTaskComplete(taskID, logger) },
 	)
 	if err != nil {

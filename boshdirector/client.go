@@ -22,11 +22,37 @@ import (
 	"github.com/craigfurman/herottp"
 )
 
+type Probe func() (bool, error)
+
+type Poller interface {
+	PollUntil(Probe) error
+}
+
+type SleepingPoller struct {
+	pollingInterval time.Duration
+}
+
+func (p *SleepingPoller) PollUntil(probe Probe) error {
+	for {
+		done, err := probe()
+		if err != nil {
+			return err
+		}
+
+		if done {
+			return nil
+		}
+
+		time.Sleep(p.pollingInterval)
+	}
+}
+
 type Client struct {
 	url string
 
 	PollingInterval time.Duration
 
+	poller            Poller
 	authHeaderBuilder AuthHeaderBuilder
 	httpClient        HTTPClient
 }
@@ -56,6 +82,7 @@ func New(url string, authHeaderBuilder AuthHeaderBuilder, disableSSLCertVerifica
 			Timeout: 30 * time.Second,
 		}),
 		PollingInterval: 5,
+		poller:          &SleepingPoller{pollingInterval: 5 * time.Second},
 	}, nil
 }
 
