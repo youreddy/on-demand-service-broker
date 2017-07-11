@@ -299,27 +299,9 @@ var _ = Describe("updating a service instance", func() {
 				updateResp = updateServiceInstanceRequest(updateArbParams, instanceID, dedicatedPlanID, highMemoryPlanID)
 			})
 
-			Context("and the cf_user_triggered_upgrades feature is turned on", func() {
-				BeforeEach(func() {
-					conf.Features.UserTriggeredUpgrades = true
-				})
-
-				It("reports a pending change message", func() {
-					Expect(updateResp.StatusCode).To(Equal(http.StatusUnprocessableEntity))
-					Expect(descriptionFrom(updateResp)).To(ContainSubstring(broker.PendingChangesErrorMessage))
-				})
-			})
-
-			Context("and the cf_user_triggered_upgrades feature is off", func() {
-				BeforeEach(func() {
-					conf.Features.UserTriggeredUpgrades = false
-				})
-
-				It("reports a apply changes disabled message", func() {
-					Expect(updateResp.StatusCode).To(Equal(http.StatusUnprocessableEntity))
-					//TODO: fix
-					//Expect(descriptionFrom(updateResp)).To(ContainSubstring(broker.ApplyChangesDisabledMessage))
-				})
+			It("reports a apply changes disabled message", func() {
+				Expect(updateResp.StatusCode).To(Equal(http.StatusUnprocessableEntity))
+				Expect(descriptionFrom(updateResp)).To(ContainSubstring(broker.PendingChangesErrorMessage))
 			})
 		})
 
@@ -457,8 +439,6 @@ var _ = Describe("updating a service instance", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				adapter.GenerateManifest().ToReturnManifest(string(generatedManifestBytes))
-
-				conf.Features.UserTriggeredUpgrades = false
 			})
 
 			It("returns an apply changes disabled message", func() {

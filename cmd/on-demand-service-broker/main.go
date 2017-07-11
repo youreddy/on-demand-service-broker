@@ -110,7 +110,7 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 	deploymentManager := task.NewDeployer(boshClient, manifestGenerator)
 	credStore := credentialStore(conf.Credhub, conf.Broker.DisableSSLCertVerification)
 
-	onDemandBroker, err := broker.New(boshClient, cfClient, credStore, serviceAdapter, deploymentManager, conf.ServiceCatalog, loggerFactory, conf.Features)
+	onDemandBroker, err := broker.New(boshClient, cfClient, credStore, serviceAdapter, deploymentManager, conf.ServiceCatalog, loggerFactory)
 	if err != nil {
 		logger.Fatalf("error starting broker: %s", err)
 	}
