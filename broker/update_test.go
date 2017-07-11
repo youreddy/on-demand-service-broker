@@ -173,7 +173,6 @@ var _ = Describe("Update", func() {
 			Context("but there are pending changes", func() {
 				BeforeEach(func() {
 					fakeDeployer.UpdateReturns(boshTaskID, nil, task.PendingChangesNotAppliedError{})
-					fakeFeatureFlags.CFUserTriggeredUpgradesReturns(false)
 				})
 
 				It("reports an apply changes not permitted error", func() {
