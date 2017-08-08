@@ -517,6 +517,37 @@ var _ = Describe("updating a service instance", func() {
 				}))
 			})
 		})
+
+		Context("and there are changes in the service instance manifest's update block", func() {
+			BeforeEach(func() {
+				conf.ServiceCatalog.Plans[0].Update = nil
+
+				manifest.Update = bosh.Update{
+					Canaries: 7,
+				}
+
+				adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(instanceID))
+			})
+
+			FIt("successfully performs the update", func() {
+				boshDirector.VerifyAndMock(
+					mockbosh.Tasks(deploymentName(instanceID)).RespondsWithNoTasks(),
+					mockbosh.GetDeployment(deploymentName(instanceID)).RespondsWithManifest(manifest),
+					mockbosh.Deploy().WithManifest(manifest).WithoutContextID().RedirectsToTask(updateTaskID),
+				)
+
+				updateResp = updateServiceInstanceRequest(updateArbParams, instanceID, dedicatedPlanID, dedicatedPlanID)
+
+				Expect(updateResp.StatusCode).To(Equal(http.StatusAccepted))
+
+				Expect(*operationDataFromUpdateResponse(updateResp)).To(Equal(
+					broker.OperationData{
+						OperationType: broker.OperationTypeUpdate,
+						BoshTaskID:    updateTaskID,
+					},
+				))
+			})
+		})
 	})
 })
 

@@ -123,6 +123,12 @@ func (d deployer) checkForPendingChanges(
 		return err
 	}
 
+	fmt.Println("\n\nabout to check equality")
+	fmt.Println("old manifest update block is", string(oldManifest))
+	fmt.Println("\n\n")
+	fmt.Println("regenerated manifest update block is", string(regeneratedManifest))
+	fmt.Println("\n\n")
+
 	manifestsSame, err := regeneratedManifest.Equals(oldManifest)
 	if err != nil {
 		return fmt.Errorf("error detecting change in manifest: %s", err)
