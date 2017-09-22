@@ -55,7 +55,7 @@ var _ = Describe("binding service instances", func() {
 		cfAPI = mockcfapi.New()
 
 		var brokerConfig config.Config
-		brokerConfig = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+		brokerConfig = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 
 		runningBroker = startBrokerWithPassingStartupChecks(brokerConfig, cfAPI, boshDirector)
 	})

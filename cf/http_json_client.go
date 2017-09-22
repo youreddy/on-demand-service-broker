@@ -30,6 +30,22 @@ type AuthHeaderBuilder interface {
 	Build(logger *log.Logger) (string, error)
 }
 
+
+func (w httpJsonClient) getUnauthorized(path string, body interface{}, logger *log.Logger) error {
+	req, err := http.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return err
+	}
+
+	logger.Printf(fmt.Sprintf("GET %s", path))
+
+	response, err := w.client.Do(req)
+	if err != nil {
+		return err
+	}
+	return w.readResponse(response, body)
+}
+
 func (w httpJsonClient) get(path string, body interface{}, logger *log.Logger) error {
 	req, err := http.NewRequest(http.MethodGet, path, nil)
 	if err != nil {

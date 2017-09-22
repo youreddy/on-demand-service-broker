@@ -46,7 +46,7 @@ var _ = Describe("deprovisioning service instances", func() {
 		boshUAA = mockuaa.NewClientCredentialsServer(boshClientID, boshClientSecret, "bosh uaa token")
 		cfUAA = mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
 		cfAPI = mockcfapi.New()
-		conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+		conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 	})
 
 	JustBeforeEach(func() {

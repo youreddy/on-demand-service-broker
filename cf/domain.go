@@ -53,6 +53,7 @@ type pagination struct {
 
 type infoResponse struct {
 	APIVersion string `json:"api_version"`
+	AuthorizationEndpoint string `json:"authorization_endpoint"`
 }
 
 type oauthTokenResponse struct {

@@ -122,10 +122,10 @@ type AuthHeaderBuilder interface {
 	Build(logger *log.Logger) (string, error)
 }
 
-func (cf CF) NewAuthHeaderBuilder(disableSSLCertVerification bool) (AuthHeaderBuilder, error) {
+func (cf CF) NewAuthHeaderBuilder(cfAuthenticationURL string, disableSSLCertVerification bool) (AuthHeaderBuilder, error) {
 	if cf.Authentication.ClientCredentials.IsSet() {
 		return authorizationheader.NewClientTokenAuthHeaderBuilder(
-			cf.Authentication.URL,
+			cfAuthenticationURL,
 			cf.Authentication.ClientCredentials.ID,
 			cf.Authentication.ClientCredentials.Secret,
 			disableSSLCertVerification,
@@ -133,7 +133,7 @@ func (cf CF) NewAuthHeaderBuilder(disableSSLCertVerification bool) (AuthHeaderBu
 		)
 	} else {
 		return authorizationheader.NewUserTokenAuthHeaderBuilder(
-			cf.Authentication.URL,
+			cfAuthenticationURL,
 			"cf",
 			"",
 			cf.Authentication.UserCredentials.Username,
@@ -189,17 +189,12 @@ func (cf CF) Validate() error {
 }
 
 func (a UAAAuthentication) Validate() error {
-	urlIsSet := a.URL != ""
 	clientIsSet := a.ClientCredentials.IsSet()
 	basicSet := a.UserCredentials.IsSet()
 
 	var err error
 
-	if !urlIsSet && !clientIsSet && !basicSet {
-		return fmt.Errorf("Must specify UAA authentication")
-	} else if !urlIsSet {
-		return fmt.Errorf("Must specify UAA url")
-	} else if !clientIsSet && !basicSet {
+	if !clientIsSet && !basicSet {
 		return fmt.Errorf("Must specify UAA credentials")
 	} else if clientIsSet && basicSet {
 		err = fmt.Errorf("Cannot specify both client and user credentials for UAA authentication")

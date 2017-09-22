@@ -66,7 +66,7 @@ var _ = Describe("Startup", func() {
 			cfAPI = mockcfapi.New()
 			cfUAA = mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
 
-			conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+			conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 		})
 
 		AfterEach(func() {
@@ -108,7 +108,7 @@ var _ = Describe("Startup", func() {
 
 			cfAPI = mockcfapi.New()
 			cfUAA = mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
-			conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+			conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 			conf.Broker.StartUpBanner = true
 		})
 
@@ -310,7 +310,7 @@ var _ = Describe("Startup", func() {
 			cfAPI = mockcfapi.New()
 			cfUAA = mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
 
-			conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+			conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 		})
 
 		AfterEach(func() {
@@ -552,11 +552,12 @@ var _ = Describe("Startup", func() {
 					mockbosh.Info().RespondsOKWith(`{"version":"1.3261.42.0 (00000000)"}`),
 				)
 				cfAPI.VerifyAndMock(
-					mockcfapi.GetInfo().RespondsOKWith(`{"api_version": "2.56.0"}`),
+					mockcfapi.GetInfo().RespondsOKWith(fmt.Sprintf(`{"api_version": "2.56.0", "authorization_endpoint": "%s"}`, cfUAA.URL)),
+					mockcfapi.GetInfo().RespondsOKWith(fmt.Sprintf(`{"api_version": "2.56.0", "authorization_endpoint": "%s"}`, cfUAA.URL)),
 				)
 			})
 
-			It("fails to start", func() {
+			FIt("fails to start", func() {
 				runningBroker = startBrokerWithoutPortCheck(conf)
 
 				By("logging a CF API version error")

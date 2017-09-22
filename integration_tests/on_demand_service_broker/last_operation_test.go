@@ -74,7 +74,7 @@ var _ = Describe("last operation", func() {
 		cfAPI = mockcfapi.New()
 		cfUAA = mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
 		adapter.GenerateManifest().ToReturnManifest(rawManifestWithDeploymentName(instanceID))
-		brokerConfig = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+		brokerConfig = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 	})
 
 	JustBeforeEach(func() {

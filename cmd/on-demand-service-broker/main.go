@@ -86,7 +86,11 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 		logger.Fatalf("error creating bosh client: %s", err)
 	}
 
-	cfAuthenticator, err := conf.CF.NewAuthHeaderBuilder(conf.Broker.DisableSSLCertVerification)
+	unauthCF, _ := cf.NewUnauthenticated(conf.CF.URL, []byte(conf.CF.TrustedCert), conf.Broker.DisableSSLCertVerification)
+
+	authURL, _ := unauthCF.GetAuthURL(logger)
+
+	cfAuthenticator, err := conf.CF.NewAuthHeaderBuilder(authURL, conf.Broker.DisableSSLCertVerification)
 	if err != nil {
 		logger.Fatalf("error creating CF authorization header builder: %s", err)
 	}

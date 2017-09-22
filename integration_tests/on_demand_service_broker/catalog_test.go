@@ -56,7 +56,7 @@ var _ = Describe("Catalog", func() {
 
 	Context("without optional fields", func() {
 		BeforeEach(func() {
-			config = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+			config = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 			config.ServiceCatalog.DashboardClient = nil
 		})
 
@@ -127,7 +127,7 @@ var _ = Describe("Catalog", func() {
 
 	Context("with optional 'requires' field", func() {
 		BeforeEach(func() {
-			config = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+			config = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 			config.ServiceCatalog.Requires = []string{"syslog_drain", "route_forwarding"}
 		})
 

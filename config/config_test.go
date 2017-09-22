@@ -65,7 +65,6 @@ var _ = Describe("Config", func() {
 						URL:         "some-cf-url",
 						TrustedCert: "some-cf-cert",
 						Authentication: config.UAAAuthentication{
-							URL: "a-uaa-url",
 							UserCredentials: config.UserCredentials{
 								Username: "some-cf-username",
 								Password: "some-cf-password",
@@ -298,17 +297,7 @@ var _ = Describe("Config", func() {
 				})
 
 				It("returns an error", func() {
-					Expect(parseErr).To(MatchError(ContainSubstring("Must specify UAA authentication")))
-				})
-			})
-
-			Context("when the CF configuration does not specify a UAA url", func() {
-				BeforeEach(func() {
-					configFileName = "cf_no_uaa_url.yml"
-				})
-
-				It("returns an error", func() {
-					Expect(parseErr).To(MatchError(ContainSubstring("Must specify UAA url")))
+					Expect(parseErr).To(MatchError(ContainSubstring("Must specify UAA credentials")))
 				})
 			})
 
@@ -594,9 +583,8 @@ var _ = Describe("CF#NewAuthHeaderBuilder", func() {
 				cfConfig.Authentication.UserCredentials.Password,
 				tokenToReturn,
 			)
-			cfConfig.Authentication.URL = mockUAA.URL
 
-			builder, err := cfConfig.NewAuthHeaderBuilder(true)
+			builder, err := cfConfig.NewAuthHeaderBuilder(mockUAA.URL, true)
 			Expect(err).NotTo(HaveOccurred())
 
 			header, err := builder.Build(logger)
@@ -624,9 +612,8 @@ var _ = Describe("CF#NewAuthHeaderBuilder", func() {
 				cfConfig.Authentication.ClientCredentials.Secret,
 				tokenToReturn,
 			)
-			cfConfig.Authentication.URL = mockUAA.URL
 
-			builder, err := cfConfig.NewAuthHeaderBuilder(true)
+			builder, err := cfConfig.NewAuthHeaderBuilder(mockUAA.URL,true)
 			Expect(err).NotTo(HaveOccurred())
 
 			header, err := builder.Build(logger)

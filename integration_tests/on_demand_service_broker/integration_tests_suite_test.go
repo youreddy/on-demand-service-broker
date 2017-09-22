@@ -299,7 +299,7 @@ func lastOperationForInstance(instanceID string, operationData broker.OperationD
 	return lastOperationResponse
 }
 
-func defaultBrokerConfig(boshURL, uaaURL, cfURL, cfUAAURL string) config.Config {
+func defaultBrokerConfig(boshURL, uaaURL, cfURL string) config.Config {
 	return config.Config{
 		Broker: config.Broker{
 			Port:                brokerPort,
@@ -317,7 +317,6 @@ func defaultBrokerConfig(boshURL, uaaURL, cfURL, cfUAAURL string) config.Config 
 		CF: config.CF{
 			URL: cfURL,
 			Authentication: config.UAAAuthentication{
-				URL: cfUAAURL,
 				ClientCredentials: config.ClientCredentials{
 					ID:     cfUaaClientID,
 					Secret: cfUaaClientSecret,

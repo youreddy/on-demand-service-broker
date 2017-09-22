@@ -46,7 +46,7 @@ var _ = Describe("broker process", func() {
 		boshDirector.ExpectedAuthorizationHeader(boshUAA.ExpectedAuthorizationHeader())
 		cfAPI = mockcfapi.New()
 		cfUAA = mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
-		brokerConfig = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+		brokerConfig = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 		adapter.DashboardUrlGenerator().NotImplemented()
 
 		manifest = bosh.BoshManifest{

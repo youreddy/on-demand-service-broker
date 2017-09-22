@@ -47,7 +47,7 @@ var _ = Describe("Management API", func() {
 		boshDirector.ExpectedAuthorizationHeader(boshUAA.ExpectedAuthorizationHeader())
 		cfAPI = mockcfapi.New()
 		cfUAA = mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
-		conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+		conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 	})
 
 	JustBeforeEach(func() {

@@ -62,7 +62,7 @@ var _ = Describe("updating a service instance", func() {
 		boshDirector.ExpectedAuthorizationHeader(boshUAA.ExpectedAuthorizationHeader())
 		cfAPI = mockcfapi.New()
 		cfUAA = mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
-		conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
+		conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL)
 	})
 
 	JustBeforeEach(func() {

@@ -58,7 +58,7 @@ var _ = Describe("unbinding service instances", func() {
 	})
 
 	JustBeforeEach(func() {
-		runningBroker = startBrokerWithPassingStartupChecks(defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL), cfAPI, boshDirector)
+		runningBroker = startBrokerWithPassingStartupChecks(defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL), cfAPI, boshDirector)
 		beforeUnbinding()
 		unbindResponse = unbind(brokerPort, instanceID, bindingServiceID, bindingPlanID)
 	})

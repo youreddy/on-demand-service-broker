@@ -38,7 +38,7 @@ var _ = Describe("Basic authentication for BOSH", func() {
 			boshDirector.ExpectedBasicAuth(boshUsername, boshPassword)
 			adapter.DashboardUrlGenerator().NotImplemented()
 
-			conf = defaultBrokerConfig(boshDirector.URL, "UAA is not used", cfAPI.URL, cfUAA.URL)
+			conf = defaultBrokerConfig(boshDirector.URL, "UAA is not used", cfAPI.URL)
 			conf.Bosh.Authentication = config.BOSHAuthentication{
 				Basic: config.UserCredentials{
 					Username: boshUsername,
