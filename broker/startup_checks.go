@@ -14,18 +14,40 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
+	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 )
 
-func (b *Broker) startupChecks() error {
+func (b *Broker) startupChecks(releases []bosh.Release) error {
 	logger := b.loggerFactory.New()
 
 	if err := b.checkAPIVersions(logger); err != nil {
 		return err
 	}
 
+	if err := b.verifyReleasesExist(logger, releases); err != nil {
+		return err
+	}
+
 	if err := b.verifyExistingInstancePlanIDsUnchanged(logger); err != nil {
 		return err
 	}
+	return nil
+}
+func (b *Broker) verifyReleasesExist(logger *log.Logger, requiredReleases []bosh.Release) error {
+	uploadedReleases, _ := b.boshClient.GetReleases(logger)
+
+	// TODO this needs to return a list of all missing required releases, not just the first one that's missing
+	for _, requiredRelease := range requiredReleases {
+		var found bool
+		for _, uploadedRelease := range uploadedReleases {
+			found = uploadedRelease.Name == requiredRelease.Name && uploadedRelease.Version == requiredRelease.Version
+		}
+
+		if found == false {
+			return errors.New(fmt.Sprintf("BOSH director missing broker.service_deployment release versions for: %s %s. Please upload the release to your BOSH director or change the deployment versions in your ODB manifest", requiredRelease.Name, requiredRelease.Version))
+		}
+	}
+
 	return nil
 }
 

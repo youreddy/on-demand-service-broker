@@ -52,8 +52,8 @@ var (
 	cfUaaClientID     = "cfAdminUsername"
 	cfUaaClientSecret = "cfAdminPassword"
 
-	serviceReleaseName    = "bosh-release-that-provides-job"
-	serviceReleaseVersion = "0+dev.42"
+	serviceReleaseName    = "required-bosh-release"
+	serviceReleaseVersion = "1.0"
 
 	stemcellOS      = "ubuntu-trusty"
 	stemcellVersion = "1234"

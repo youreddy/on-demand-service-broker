@@ -31,6 +31,7 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/mgmtapi"
 	"github.com/pivotal-cf/on-demand-service-broker/serviceadapter"
 	"github.com/pivotal-cf/on-demand-service-broker/task"
+	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 	"github.com/urfave/negroni"
 )
 
@@ -115,7 +116,24 @@ func startBroker(conf config.Config, logger *log.Logger, loggerFactory *loggerfa
 
 	deploymentManager := task.NewDeployer(boshClient, manifestGenerator)
 
-	onDemandBroker, err := broker.New(boshClient, cfClient, serviceAdapter, deploymentManager, conf.ServiceCatalog, loggerFactory)
+	// TODO: Boo conversion
+	var boshReleases []bosh.Release
+	for _, release := range conf.ServiceDeployment.Releases {
+		boshReleases = append(boshReleases, bosh.Release{
+			Name:    release.Name,
+			Version: release.Version,
+		})
+	}
+
+	onDemandBroker, err := broker.New(
+		boshClient,
+		cfClient,
+		serviceAdapter,
+		deploymentManager,
+		conf.ServiceCatalog,
+		loggerFactory,
+		boshReleases,
+	)
 
 	if err != nil {
 		logger.Fatalf("error starting broker: %s", err)

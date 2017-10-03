@@ -38,6 +38,7 @@ func New(
 	deployer Deployer,
 	serviceOffering config.ServiceOffering,
 	loggerFactory *loggerfactory.LoggerFactory,
+	releases []bosh.Release,
 ) (*Broker, error) {
 
 	b := &Broker{
@@ -52,7 +53,7 @@ func New(
 		loggerFactory: loggerFactory,
 	}
 
-	if err := b.startupChecks(); err != nil {
+	if err := b.startupChecks(releases); err != nil {
 		return nil, err
 	}
 
@@ -112,6 +113,7 @@ type BoshClient interface {
 	GetDeployments(logger *log.Logger) ([]boshdirector.Deployment, error)
 	DeleteDeployment(name, contextID string, logger *log.Logger) (int, error)
 	GetDirectorVersion(logger *log.Logger) (boshdirector.Version, error)
+	GetReleases(logger *log.Logger) ([]bosh.Release, error)
 	RunErrand(deploymentName, errandName, contextID string, logger *log.Logger) (int, error)
 }
 

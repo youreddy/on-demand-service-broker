@@ -13,8 +13,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/on-demand-service-broker/boshdirector"
+	"github.com/pivotal-cf/on-demand-service-broker/broker"
 	"github.com/pivotal-cf/on-demand-service-broker/cf"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
+	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
 
@@ -215,6 +217,45 @@ var _ = Describe("Initializing the broker", func() {
 				Expect(brokerCreationErr).To(MatchError(`BOSH Director error: unrecognised BOSH Director version: "0000 (00000000)". ODB requires BOSH v257+.`))
 			})
 		})
+	})
+
+	Describe("check BOSH uploaded releases", func() {
+		It("succeeds when all required releases are present", func() {
+			boshClient.GetReleasesReturns([]bosh.Release{
+				{
+					Name:    "release",
+					Version: "1.0",
+				},
+			}, nil)
+			Expect(boshClient.GetReleasesCallCount()).To(Equal(1), "expected BOSH client to get releases")
+			Expect(brokerCreationErr).NotTo(HaveOccurred())
+		})
+
+		It("fails if a required release is missing", func() {
+			boshClient.GetReleasesReturns([]bosh.Release{
+				{
+					Name:    "release",
+					Version: "2.0",
+				},
+			}, nil)
+
+			// TODO we have to do broker.New to set the new response for the mock GetRelease call and because this package uses a global JustBeforeEach :(
+			b, brokerCreationErr = broker.New(
+				boshClient,
+				cfClient,
+				serviceAdapter,
+				fakeDeployer,
+				serviceCatalog,
+				loggerFactory,
+				releases,
+			)
+
+			Expect(brokerCreationErr).To(HaveOccurred())
+			Expect(brokerCreationErr).To(MatchError("BOSH director missing broker.service_deployment release versions for: release 1.0. Please upload the release to your BOSH director or change the deployment versions in your ODB manifest"))
+		})
+
+		// TODO if GetReleases returns error
+		// TODO multiple required releases compared to upload releases returns a list, not just one
 	})
 
 	Describe("check CF service instances", func() {

@@ -20,6 +20,7 @@ import (
 	"github.com/pivotal-cf/on-demand-service-broker/cf"
 	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/loggerfactory"
+	"github.com/pivotal-cf/on-demand-services-sdk/bosh"
 	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 )
 
@@ -48,6 +49,12 @@ var (
 	serviceCatalog      config.ServiceOffering
 	logBuffer           *bytes.Buffer
 	loggerFactory       *loggerfactory.LoggerFactory
+	releases            = []bosh.Release{
+		{
+			Name:    "release",
+			Version: "1.0",
+		},
+	}
 
 	existingPlanServiceInstanceLimit    = 3
 	serviceOfferingServiceInstanceLimit = 5
@@ -126,6 +133,7 @@ var _ = BeforeEach(func() {
 	boshClient = new(fakes.FakeBoshClient)
 	boshDirectorVersion = boshdirector.NewVersion(boshdirector.MinimumMajorSemverDirectorVersionForLifecycleErrands, boshdirector.SemverDirectorVersionType)
 	boshClient.GetDirectorVersionReturns(boshDirectorVersion, nil)
+	boshClient.GetReleasesReturns(releases, nil)
 	serviceAdapter = new(fakes.FakeServiceAdapterClient)
 	fakeDeployer = new(fakes.FakeDeployer)
 	cfClient = new(fakes.FakeCloudFoundryClient)
@@ -158,6 +166,7 @@ var _ = JustBeforeEach(func() {
 		fakeDeployer,
 		serviceCatalog,
 		loggerFactory,
+		releases,
 	)
 })
 

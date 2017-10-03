@@ -125,6 +125,19 @@ type FakeBoshClient struct {
 		result1 boshdirector.Version
 		result2 error
 	}
+	GetReleasesStub        func(logger *log.Logger) ([]bosh.Release, error)
+	getReleasesMutex       sync.RWMutex
+	getReleasesArgsForCall []struct {
+		logger *log.Logger
+	}
+	getReleasesReturns struct {
+		result1 []bosh.Release
+		result2 error
+	}
+	getReleasesReturnsOnCall map[int]struct {
+		result1 []bosh.Release
+		result2 error
+	}
 	RunErrandStub        func(deploymentName, errandName, contextID string, logger *log.Logger) (int, error)
 	runErrandMutex       sync.RWMutex
 	runErrandArgsForCall []struct {
@@ -564,6 +577,57 @@ func (fake *FakeBoshClient) GetDirectorVersionReturnsOnCall(i int, result1 boshd
 	}{result1, result2}
 }
 
+func (fake *FakeBoshClient) GetReleases(logger *log.Logger) ([]bosh.Release, error) {
+	fake.getReleasesMutex.Lock()
+	ret, specificReturn := fake.getReleasesReturnsOnCall[len(fake.getReleasesArgsForCall)]
+	fake.getReleasesArgsForCall = append(fake.getReleasesArgsForCall, struct {
+		logger *log.Logger
+	}{logger})
+	fake.recordInvocation("GetReleases", []interface{}{logger})
+	fake.getReleasesMutex.Unlock()
+	if fake.GetReleasesStub != nil {
+		return fake.GetReleasesStub(logger)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.getReleasesReturns.result1, fake.getReleasesReturns.result2
+}
+
+func (fake *FakeBoshClient) GetReleasesCallCount() int {
+	fake.getReleasesMutex.RLock()
+	defer fake.getReleasesMutex.RUnlock()
+	return len(fake.getReleasesArgsForCall)
+}
+
+func (fake *FakeBoshClient) GetReleasesArgsForCall(i int) *log.Logger {
+	fake.getReleasesMutex.RLock()
+	defer fake.getReleasesMutex.RUnlock()
+	return fake.getReleasesArgsForCall[i].logger
+}
+
+func (fake *FakeBoshClient) GetReleasesReturns(result1 []bosh.Release, result2 error) {
+	fake.GetReleasesStub = nil
+	fake.getReleasesReturns = struct {
+		result1 []bosh.Release
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeBoshClient) GetReleasesReturnsOnCall(i int, result1 []bosh.Release, result2 error) {
+	fake.GetReleasesStub = nil
+	if fake.getReleasesReturnsOnCall == nil {
+		fake.getReleasesReturnsOnCall = make(map[int]struct {
+			result1 []bosh.Release
+			result2 error
+		})
+	}
+	fake.getReleasesReturnsOnCall[i] = struct {
+		result1 []bosh.Release
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeBoshClient) RunErrand(deploymentName string, errandName string, contextID string, logger *log.Logger) (int, error) {
 	fake.runErrandMutex.Lock()
 	ret, specificReturn := fake.runErrandReturnsOnCall[len(fake.runErrandArgsForCall)]
@@ -637,6 +701,8 @@ func (fake *FakeBoshClient) Invocations() map[string][][]interface{} {
 	defer fake.deleteDeploymentMutex.RUnlock()
 	fake.getDirectorVersionMutex.RLock()
 	defer fake.getDirectorVersionMutex.RUnlock()
+	fake.getReleasesMutex.RLock()
+	defer fake.getReleasesMutex.RUnlock()
 	fake.runErrandMutex.RLock()
 	defer fake.runErrandMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

@@ -28,24 +28,92 @@ import (
 var _ = Describe("Startup", func() {
 	var runningBroker *gexec.Session
 
-	Context("when supplied with an invalid config file path", func() {
+	It("exits with error when supplied with an invalid config file path", func() {
+		// ensure that any previous instance of the broker has stopped
+		// if this assertion fails, look for running instances of on-demand-broker and kill them!
+		Eventually(dialBroker).Should(BeFalse(), "an old instance of the broker is still running")
+
+		var err error
+		runningBroker, err = gexec.Start(exec.Command(brokerBinPath, "-configFilePath", "/i_hope_this_does_not_exist_on_your_system"), GinkgoWriter, GinkgoWriter)
+		Expect(err).NotTo(HaveOccurred())
+		runningBroker.Wait(time.Second)
+
+		Expect(runningBroker.ExitCode()).ToNot(Equal(0))
+		Expect(string(runningBroker.Buffer().Contents())).To(ContainSubstring("error parsing config"))
+	})
+
+	Describe("Service deployment releases", func() {
+		var (
+			boshDirector *mockhttp.Server
+			boshUAA      *mockuaa.ClientCredentialsServer
+			cfAPI        *mockhttp.Server
+			cfUAA        *mockuaa.ClientCredentialsServer
+			conf         config.Config
+		)
+
 		BeforeEach(func() {
-			// ensure that any previous instance of the broker has stopped
-			// if this assertion fails, look for running instances of on-demand-broker and kill them!
-			Eventually(dialBroker).Should(BeFalse(), "an old instance of the broker is still running")
+			boshUAA = mockuaa.NewClientCredentialsServer(boshClientID, boshClientSecret, "bosh uaa token")
+			boshDirector = mockbosh.New()
+			boshDirector.ExpectedAuthorizationHeader(boshUAA.ExpectedAuthorizationHeader())
 
-			var err error
-			runningBroker, err = gexec.Start(exec.Command(brokerBinPath, "-configFilePath", "/i_hope_this_does_not_exist_on_your_system"), GinkgoWriter, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-			runningBroker.Wait(time.Second)
+			cfAPI = mockcfapi.New()
+			cfUAA = mockuaa.NewClientCredentialsServer(cfUaaClientID, cfUaaClientSecret, "CF UAA token")
+
+			conf = defaultBrokerConfig(boshDirector.URL, boshUAA.URL, cfAPI.URL, cfUAA.URL)
 		})
 
-		It("exits with error", func() {
-			Expect(runningBroker.ExitCode()).ToNot(Equal(0))
+		AfterEach(func() {
+			if runningBroker != nil {
+				Eventually(runningBroker.Terminate()).Should(gexec.Exit())
+			}
+			boshDirector.VerifyMocks()
+			boshDirector.Close()
+			boshUAA.Close()
+			cfAPI.VerifyMocks()
+			cfAPI.Close()
+			cfUAA.Close()
 		})
 
-		It("prints the error", func() {
-			Expect(string(runningBroker.Buffer().Contents())).To(ContainSubstring("error parsing config"))
+		It("starts up successfully when the required service releases exist on the BOSH director", func() {
+			cfAPI.VerifyAndMock(
+				mockcfapi.GetInfo().RespondsWithSufficientAPIVersion(),
+				mockcfapi.ListServiceOfferings().RespondsWithNoServiceOfferings(),
+			)
+			boshDirector.VerifyAndMock(
+				mockbosh.Info().RespondsWithSufficientStemcellVersionForODB(),
+				mockbosh.Releases().RespondsWithRequiredReleases(),
+			)
+
+			runningBroker = startBroker(conf)
+
+			odbLogPattern := `\[on-demand-service-broker\] \d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{6}`
+
+			Eventually(runningBroker.Out).Should(gbytes.Say(fmt.Sprintf(`%s Starting broker`, odbLogPattern)))
+			Eventually(runningBroker.Out).Should(gbytes.Say(fmt.Sprintf(`%s Listening on :%d`, odbLogPattern, conf.Broker.Port)))
+			Eventually(runningBroker).ShouldNot(gexec.Exit())
+		})
+
+		It("fails to startup when the required service releases don't exit on the BOSH director", func() {
+			cfAPI.VerifyAndMock(
+				mockcfapi.GetInfo().RespondsWithSufficientAPIVersion(),
+				mockcfapi.ListServiceOfferings().RespondsWithNoServiceOfferings(),
+			)
+			boshDirector.VerifyAndMock(
+				mockbosh.Info().RespondsWithSufficientStemcellVersionForODB(),
+				mockbosh.Releases().RespondsWithMissingReleases(),
+			)
+
+			runningBroker = startBroker(conf)
+			odbLogPattern := `\[on-demand-service-broker\] \d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{6}`
+
+			Eventually(runningBroker.Out).Should(gbytes.Say(fmt.Sprintf(`%s Starting broker`, odbLogPattern)))
+
+			// TODO test for when multiple service releases are required
+			//Eventually(runningBroker.Out).Should(gbytes.Say("error starting broker: BOSH director missing broker.service_deployment release versions for: required-bosh-release 1.0, $release_name $version. Please upload the release to your BOSH director or change the deployment versions in your ODB manifest"))
+
+			Eventually(runningBroker.Out).Should(gbytes.Say("error starting broker: BOSH director missing broker.service_deployment release versions for: required-bosh-release 1.0. Please upload the release to your BOSH director or change the deployment versions in your ODB manifest"))
+			Eventually(runningBroker).Should(gexec.Exit())
+			Expect(runningBroker.ExitCode()).To(Equal(1))
 		})
 	})
 
@@ -81,7 +149,7 @@ var _ = Describe("Startup", func() {
 			cfUAA.Close()
 		})
 
-		It("exits with error", func() {
+		It("exits with error when the stemcell version is specified as 'latest'", func() {
 			conf.ServiceDeployment.Stemcell.Version = "latest"
 			runningBroker = startBrokerWithoutPortCheck(conf)
 			Eventually(runningBroker).Should(gexec.Exit())
@@ -90,6 +158,8 @@ var _ = Describe("Startup", func() {
 				"You must configure the exact release and stemcell versions in broker.service_deployment. ODB requires exact versions to detect pending changes as part of the 'cf update-service' workflow. For example, latest and 3112.latest are not supported.",
 			))
 		})
+
+		//It("exits with error ")
 	})
 
 	Describe("CF api", func() {
