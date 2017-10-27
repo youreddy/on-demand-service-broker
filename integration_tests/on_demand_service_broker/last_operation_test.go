@@ -239,7 +239,7 @@ var _ = Describe("last operation", func() {
 		})
 	})
 
-	Context("when post-deploy errand is configured and operation data contains a context id", func() {
+	FContext("when post-deploy errand is configured and operation data contains a context id", func() {
 		var (
 			errandName = "health-check"
 		)
@@ -254,7 +254,8 @@ var _ = Describe("last operation", func() {
 				Name: "post-deploy-plan",
 				LifecycleErrands: &config.LifecycleErrands{
 					PostDeploy: config.Errand{
-						Name: errandName,
+						Name:      errandName,
+						Instances: []string{"instance-group-name/0"},
 					},
 				},
 			}
@@ -294,13 +295,22 @@ var _ = Describe("last operation", func() {
 			})
 		})
 
-		Context("and when there is a single complete task", func() {
+		FContext("and when there is a single complete task", func() {
 			BeforeEach(func() {
+				var instances struct {
+					Instances []boshdirector.Instance `json:"instances"`
+				}
+
+				instance := &boshdirector.Instance{Group: "instance-group-name", ID: "0"}
+				instances.Instances = append(instances.Instances, *instance)
+				instancesRaw, err := json.Marshal(instances)
+				Expect(err).NotTo(HaveOccurred())
+
 				boshDirector.VerifyAndMock(
 					mockbosh.TasksByContext(deploymentName(instanceID), contextID).
 						RespondsOKWithJSON(boshdirector.BoshTasks{taskDone}),
 					mockbosh.TaskOutput(taskDone.ID).RespondsOKWith(""),
-					mockbosh.Errand(deploymentName(instanceID), errandName, `{}`).
+					mockbosh.Errand(deploymentName(instanceID), errandName, string(instancesRaw)).
 						WithContextID(contextID).RedirectsToTask(taskProcessing.ID),
 					mockbosh.Task(taskProcessing.ID).RespondsOKWithJSON(taskProcessing),
 				)
@@ -834,7 +844,7 @@ var _ = Describe("last operation", func() {
 		})
 	})
 
-	Context("when a lifecycle errand is removed from plan config during the deployment", func() {
+	FContext("when a lifecycle errand is removed from plan config during the deployment", func() {
 		var (
 			taskDone       boshdirector.BoshTask
 			taskProcessing boshdirector.BoshTask
