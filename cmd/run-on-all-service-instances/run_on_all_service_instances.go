@@ -10,21 +10,15 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
-	"time"
 
-	"github.com/pivotal-cf/on-demand-service-broker/cf"
-	"github.com/pivotal-cf/on-demand-service-broker/deleter"
+	"github.com/pivotal-cf/on-demand-service-broker/config"
 	"github.com/pivotal-cf/on-demand-service-broker/loggerfactory"
+	"github.com/pivotal-cf/on-demand-service-broker/runner"
 	"gopkg.in/yaml.v2"
-	"log"
 )
 
-type realSleeper struct{}
-
-func (c realSleeper) Sleep(t time.Duration) { time.Sleep(t) }
-
 func main() {
-	loggerFactory := loggerfactory.New(os.Stdout, "delete-all-service-instances", loggerfactory.Flags)
+	loggerFactory := loggerfactory.New(os.Stdout, "run-on-all-service-instances", loggerfactory.Flags)
 	logger := loggerFactory.New()
 
 	configFilePath := flag.String("configFilePath", "", "path to config file")
@@ -35,35 +29,25 @@ func main() {
 		logger.Fatalf("Error reading config file: %s", err)
 	}
 
-	var config deleter.Config
+	var config runner.Config
 	err = yaml.Unmarshal(rawConfig, &config)
 	if err != nil {
 		logger.Fatalf("Invalid config file: %s", err)
 	}
 
-	cfAuthenticator, err := config.CF.NewAuthHeaderBuilder(config.DisableSSLCertVerification)
+	err = yaml.Unmarshal(configContents, &conf)
 	if err != nil {
-		logger.Fatalf("error creating CF authorization header builder: %s", err)
+		logger.Fatalln(err.Error())
 	}
 
-	cfClient, err := cf.New(
-		config.CF.URL,
-		cfAuthenticator,
-		[]byte(config.CF.TrustedCert),
-		config.DisableSSLCertVerification,
-	)
+	builder, err := runner.NewBuilder(conf, logger)
 	if err != nil {
-		logger.Fatalf("error creating Cloud Foundry client: %s", err)
+		logger.Fatalln(err.Error())
 	}
+	upgradeTool := upgrader.New(builder)
 
-	clock := realSleeper{}
-
-	deleteTool := deleter.New(cfClient, clock, config.PollingInitialOffset, config.PollingInterval, logger)
-
-	err = deleteTool.DeleteAllServiceInstances(config.ServiceCatalog.ID)
+	err = upgradeTool.Upgrade()
 	if err != nil {
-		logger.Fatalln(err)
+		logger.Fatalln(err.Error())
 	}
-
-	logger.Println("FINISHED DELETES")
 }
